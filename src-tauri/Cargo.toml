@@ -1,0 +1,24 @@
+[package]
+name = "optical-table"
+version = "0.22.0"
+description = "Ray optics simulator"
+authors = ["Daniel L. Marks"]
+edition = "2021"
+
+[lib]
+name = "optical_table_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "optical-table"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

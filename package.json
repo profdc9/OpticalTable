@@ -1,0 +1,19 @@
+{
+  "name": "optical-table",
+  "version": "0.22.0",
+  "description": "Ray optics simulator — JS port of Daniel L. Marks' OpticalTable",
+  "scripts": {
+    "start": "npx serve public --listen 3000",
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-fs": "^2"
+  }
+}

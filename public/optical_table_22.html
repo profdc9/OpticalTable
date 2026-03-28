@@ -1,0 +1,4639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optical Table — Ray Optics Simulator</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #12161e;
+    --border: #2a3548;
+    --accent: #5cb8ff;
+    --accent2: #ff6b35;
+    --text: #dde8f8;
+    --text-dim: #7a94b8;
+    --btn: #1a2030;
+    --btn-hover: #243048;
+    --btn-active: #2a3858;
+    --green: #3ddc84;
+    --red: #ff5555;
+    --yellow: #ffd166;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+  #header h1 {
+    font-size: 16px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-weight: normal;
+  }
+  #header .subtitle {
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  #sidebar {
+    width: 220px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .sidebar-section {
+    border-bottom: 1px solid var(--border);
+    padding: 10px;
+  }
+  .sidebar-section h3 {
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .tool-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .tool-btn {
+    background: var(--btn);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 5px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    text-align: center;
+    transition: all 0.1s;
+    line-height: 1.3;
+  }
+  .tool-btn:hover { background: var(--btn-hover); border-color: var(--accent); }
+  .tool-btn.active { background: var(--btn-active); border-color: var(--accent); color: var(--accent); }
+  .add-btn {
+    background: var(--btn);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    width: 100%;
+    text-align: left;
+    transition: all 0.1s;
+    margin-bottom: 3px;
+  }
+  .add-btn:hover { background: var(--btn-hover); border-color: var(--accent); color: var(--accent); }
+  #canvas-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #050709;
+  }
+  #mainCanvas {
+    display: block;
+    cursor: crosshair;
+  }
+  /* Right panel — tabbed: Properties | Ray Data | Wavefront */
+  #right-panel {
+    width: 340px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  #panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .panel-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 8px 4px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.1s;
+    text-transform: uppercase;
+  }
+  .panel-tab:last-child { border-right: none; }
+  .panel-tab:hover { color: var(--text); background: var(--btn-hover); }
+  .panel-tab.active { color: var(--accent); background: var(--btn-active); border-bottom: 2px solid var(--accent); }
+  .panel-page { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+  .panel-page.active { display: flex; }
+  .panel-page-inner { padding: 10px; flex: 1; }
+  .prop-row {
+    display: flex;
+    flex-direction: column;
+    padding: 5px 10px;
+    border-bottom: 1px solid #0d1018;
+    gap: 3px;
+  }
+  .prop-label {
+    color: var(--text-dim);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .prop-input {
+    background: var(--btn);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 4px 6px;
+    width: 100%;
+    min-width: 0;
+  }
+  .prop-input:focus { outline: none; border-color: var(--accent); }
+  .prop-checkbox { accent-color: var(--accent); transform: scale(1.3); }
+  /* Layout table */
+  .lc { background:var(--btn);border:1px solid var(--border);color:var(--text);
+        font-size:11px;padding:2px 3px;width:100%;min-width:0;font-family:inherit; }
+  .lc:focus { outline:none;border-color:var(--accent); }
+  #layoutTable td { padding:2px 2px;border-bottom:1px solid rgba(255,255,255,0.05); }
+  #layoutTable tr:hover td { background:rgba(255,255,255,0.03); }
+  .prop-row.inline-row { flex-direction: row; align-items: center; gap: 8px; }
+  .prop-row.inline-row .prop-label { flex: 1; font-size: 12px; }
+  /* Ray data panel */
+  .data-section { margin-bottom: 14px; }
+  .data-section h4 {
+    color: var(--accent);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 3px 0;
+    border-bottom: 1px solid #0d1018;
+    gap: 8px;
+  }
+  .data-key {
+    color: var(--text-dim);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .data-val {
+    color: var(--text);
+    font-size: 12px;
+    text-align: right;
+    word-break: break-all;
+  }
+  .data-val.highlight { color: var(--yellow); }
+  .data-val.good { color: var(--green); }
+  .data-val.warn { color: var(--accent2); }
+  .ray-swatch {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .hint-text {
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 10px 0;
+  }
+  .chain-step {
+    padding: 5px 8px;
+    margin-bottom: 4px;
+    background: var(--btn);
+    border-left: 3px solid var(--border);
+    font-size: 12px;
+  }
+  .chain-step.entry { border-left-color: var(--green); }
+  .chain-step.exit  { border-left-color: var(--accent2); }
+  /* Wavefront panel */
+  .wf-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid #0d1018;
+    font-size: 12px;
+  }
+  .wf-key { color: var(--text-dim); }
+  .wf-val { color: var(--yellow); font-weight: bold; }
+  .wf-bar-wrap {
+    height: 6px;
+    background: var(--btn);
+    border-radius: 3px;
+    margin: 2px 0 8px;
+    overflow: hidden;
+  }
+  .wf-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  #statusbar {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 4px 14px;
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 22px;
+    flex-shrink: 0;
+  }
+  .status-item { color: var(--text-dim); }
+  .status-item span { color: var(--text); }
+  #loadOverlay {
+    position: fixed; inset: 0;
+    background: rgba(5,7,9,0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  #loadBox {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 28px;
+    min-width: 380px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  #loadBox h2 { color: var(--accent); font-size: 15px; letter-spacing: 2px; margin-bottom: 18px; }
+  .lesson-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--btn);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 12px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .lesson-btn:hover { background: var(--btn-hover); border-color: var(--accent); color: var(--accent); }
+  .close-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 12px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  .close-btn:hover { border-color: var(--accent); color: var(--text); }
+  select.prop-input option { background: #12161e; }
+  #toolbar-strip {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    margin-left: auto;
+  }
+  .hdr-btn {
+    background: var(--btn);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .hdr-btn:hover { background: var(--btn-hover); border-color: var(--accent); }
+  .del-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--red);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    width: calc(100% - 20px);
+    margin: 10px;
+  }
+  .del-btn:hover { background: rgba(255,68,68,0.1); }
+  .overlay-label {
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Optical Table</h1>
+  <span class="subtitle">Ray Optics Simulator · © 1997–2004 Daniel L. Marks · JS Port 2024</span>
+  <div id="toolbar-strip">
+    <button class="hdr-btn" onclick="showLoadOverlay()">LOAD SCENE</button>
+    <button class="hdr-btn" onclick="saveScene()">SAVE</button>
+    <button class="hdr-btn" onclick="newScene()">NEW</button>
+    <button class="hdr-btn" id="hideRaysBtn" onclick="toggleHideRays()">HIDE RAYS</button>
+    <button class="hdr-btn" onclick="zoomIn()">ZOOM+</button>
+    <button class="hdr-btn" onclick="zoomOut()">ZOOM−</button>
+    <button class="hdr-btn" onclick="fitView()">FIT</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div class="sidebar-section">
+      <h3>Mode</h3>
+      <div class="tool-grid">
+        <button class="tool-btn active" id="btn-move" onclick="setMode('move')">↖ MOVE</button>
+        <button class="tool-btn" id="btn-rotate" onclick="setMode('rotate')">↻ ROTATE</button>
+        <button class="tool-btn" id="btn-edit" onclick="setMode('edit')">✎ EDIT</button>
+        <button class="tool-btn" id="btn-delete" onclick="setMode('delete')">✕ DELETE</button>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <h3>Add Optic</h3>
+      <button class="add-btn" onclick="startAdd('laser')">+ LASER SOURCE</button>
+      <button class="add-btn" onclick="startAdd('gaussian')">+ GAUSSIAN BEAM</button>
+      <button class="add-btn" onclick="startAdd('aberration')">+ ABERRATION SOURCE</button>
+      <button class="add-btn" onclick="startAdd('quiver')">+ QUIVER SOURCE</button>
+      <button class="add-btn" onclick="startAdd('lens')">+ THIN LENS</button>
+      <button class="add-btn" onclick="startAdd('flat')">+ FLAT MIRROR/PLATE</button>
+      <button class="add-btn" onclick="startAdd('prism')">+ PRISM</button>
+      <button class="add-btn" onclick="startAdd('grating')">+ GRATING</button>
+      <button class="add-btn" onclick="startAdd('curved')">+ CURVED SURFACE</button>
+      <button class="add-btn" onclick="startAdd('abcd')">+ ABCD MATRIX</button>
+      <button class="add-btn" onclick="startAdd('ruler')">+ RULER</button>
+      <button class="add-btn" onclick="startAdd('protractor')">+ PROTRACTOR</button>
+      <button class="add-btn" onclick="startAdd('text')">+ TEXT LABEL</button>
+    </div>
+    <div class="sidebar-section">
+      <h3>Options</h3>
+      <label class="prop-row" style="cursor:pointer">
+        <span class="prop-label">Hide rays</span>
+        <input type="checkbox" class="prop-checkbox" id="chkHideRays" onchange="hideRays=this.checked;redraw()">
+      </label>
+      <label class="prop-row" style="cursor:pointer">
+        <span class="prop-label">Hide dots</span>
+        <input type="checkbox" class="prop-checkbox" id="chkHideDots" onchange="hideDots=this.checked;redraw()">
+      </label>
+      <label class="prop-row" style="cursor:pointer">
+        <span class="prop-label">Max bounces</span>
+        <input type="number" class="prop-input" id="inpPasses" value="50" min="1" max="200" style="flex:0 0 50px" onchange="maxPasses=+this.value;redraw()">
+      </label>
+    </div>
+  </div>
+
+  <div id="canvas-area">
+    <canvas id="mainCanvas" tabindex="0"></canvas>
+  </div>
+
+  <div id="right-panel">
+    <div id="panel-tabs">
+      <button class="panel-tab active" id="tab-props"   onclick="switchTab('props')">PROPS</button>
+      <button class="panel-tab"        id="tab-raydata" onclick="switchTab('raydata')">RAY DATA</button>
+      <button class="panel-tab"        id="tab-wf"      onclick="switchTab('wf')">WAVEFRONT</button>
+      <button class="panel-tab"        id="tab-layout"  onclick="switchTab('layout')">LAYOUT</button>
+    </div>
+
+    <!-- Properties tab -->
+    <div class="panel-page active" id="page-props">
+      <div id="propsContent" class="panel-page-inner">
+        <p class="hint-text">Click an optic to edit its properties.</p>
+      </div>
+    </div>
+
+    <!-- Ray Data tab -->
+    <div class="panel-page" id="page-raydata">
+      <div class="panel-page-inner">
+        <p class="hint-text" id="rayDataHint">
+          Click on a ray in the scene to inspect it.<br><br>
+          Switch to MOVE mode, then click near a ray path.
+        </p>
+        <div id="rayDataContent"></div>
+      </div>
+    </div>
+
+    <!-- Wavefront tab -->
+    <div class="panel-page" id="page-wf">
+      <div class="panel-page-inner">
+        <p class="hint-text" id="wfHint">
+          Select a ray bundle (click a ray) to see wavefront analysis.<br><br>
+          Shows OPD spread, angular divergence, and estimated Strehl ratio for the bundle.
+        </p>
+        <div id="wfContent"></div>
+      </div>
+    </div>
+
+    <!-- Layout tab -->
+    <div class="panel-page" id="page-layout">
+      <div class="panel-page-inner" style="padding:6px">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <span style="color:var(--text-dim);font-size:11px">First optic #</span>
+          <input type="number" id="layoutFirstOptic" value="0" min="0" style="width:50px;background:var(--input-bg);color:var(--text);border:1px solid var(--border);padding:2px 4px;font-size:12px">
+          <button class="hdr-btn" onclick="doAutoPlace()" style="flex:1">▶ APPLY LAYOUT</button>
+        </div>
+        <div id="layoutTableWrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 220px)">
+          <table id="layoutTable" style="min-width:520px;border-collapse:collapse;font-size:11px;white-space:nowrap">
+            <thead>
+              <tr style="color:var(--text-dim);border-bottom:1px solid var(--border)">
+                <th style="padding:3px 5px;text-align:left;min-width:52px">Optic#</th>
+                <th style="padding:3px 5px;text-align:left;min-width:70px">Dist (mm)</th>
+                <th style="padding:3px 5px;text-align:left;min-width:64px">Angle°</th>
+                <th style="padding:3px 5px;text-align:left;min-width:64px">Displ</th>
+                <th style="padding:3px 5px;text-align:left;min-width:40px">Back</th>
+                <th style="padding:3px 5px;text-align:left;min-width:52px">From#</th>
+                <th style="padding:3px 5px;text-align:left;min-width:44px">Ray#</th>
+                <th style="padding:3px 5px;min-width:32px"></th>
+              </tr>
+            </thead>
+            <tbody id="layoutBody"></tbody>
+          </table>
+        </div>
+        <button class="hdr-btn" onclick="layoutAddRow()" style="width:100%;margin-top:8px">+ ADD ROW</button>
+        <div style="margin-top:8px;color:var(--text-dim);font-size:10px;line-height:1.4">
+          Each row places Optic# relative to From# (or previous optic).<br>
+          Ray# selects which ray from the source to follow (1-based).<br>
+          Distance along ray, Displacement perpendicular, Angle added to ray direction.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="statusbar">
+  <div class="status-item">Mode: <span id="stMode">MOVE</span></div>
+  <div class="status-item">Optics: <span id="stOptics">0</span></div>
+  <div class="status-item">Rays: <span id="stRays">0</span></div>
+  <div class="status-item">Pos: <span id="stPos">—</span></div>
+  <div class="status-item">Zoom: <span id="stZoom">1.0</span>×</div>
+</div>
+
+<div id="loadOverlay" style="display:none">
+  <div id="loadBox">
+    <h2>LOAD SCENE</h2>
+    <div style="margin-bottom:12px">
+      <div class="overlay-label">BUILT-IN EXAMPLES</div>
+      <button class="lesson-btn" onclick="loadBuiltin('lens')">Thin Lens — basic focusing</button>
+      <button class="lesson-btn" onclick="loadBuiltin('snells')">Snell's Law — refraction at a prism</button>
+      <button class="lesson-btn" onclick="loadBuiltin('telescope')">Telescope — two-lens system</button>
+      <button class="lesson-btn" onclick="loadBuiltin('grating')">Diffraction Grating — spectral dispersion</button>
+      <button class="lesson-btn" onclick="loadBuiltin('mirror')">Curved Mirror — concave reflection</button>
+      <button class="lesson-btn" onclick="loadBuiltin('tir')">Total Internal Reflection</button>
+      <button class="lesson-btn" onclick="loadBuiltin('birefr')">Birefringent Crystal — ordinary &amp; extraordinary rays</button>
+          <button class="lesson-btn" onclick="loadBuiltin('tisapphire')">Ti:sapphire Laser Cavity — layout example</button>
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="overlay-label">LOAD .DAT FILE</div>
+      <input type="file" id="fileInput" accept=".dat,.txt" style="display:none" onchange="loadFile(this)">
+      <button class="lesson-btn" onclick="document.getElementById('fileInput').click()">📂 Open file…</button>
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="overlay-label">PASTE SCENE DATA / SAVE OUTPUT</div>
+      <textarea id="pasteArea" style="width:100%;height:80px;background:var(--btn);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:13px;padding:6px;resize:vertical" placeholder="Paste scene text here, or click SAVE to see current scene…"></textarea>
+      <div style="display:flex;gap:4px;margin-top:4px">
+        <button class="lesson-btn" onclick="loadFromPaste()" style="flex:1;margin:0">Load from text</button>
+        <button class="lesson-btn" onclick="copySceneToClipboard()" style="flex:1;margin:0" id="copyBtn">Copy to clipboard</button>
+      </div>
+    </div>
+    <button class="close-btn" onclick="hideLoadOverlay()">CLOSE</button>
+  </div>
+</div>
+
+<script>
+// ===== MATH PRIMITIVES =====
+class Vec3 {
+  constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z}
+  add(v){return new Vec3(this.x+v.x,this.y+v.y,this.z+v.z)}
+  sub(v){return new Vec3(this.x-v.x,this.y-v.y,this.z-v.z)}
+  mul(s){return new Vec3(this.x*s,this.y*s,this.z*s)}
+  dot(v){return this.x*v.x+this.y*v.y+this.z*v.z}
+  cross(v){return new Vec3(this.y*v.z-this.z*v.y,this.z*v.x-this.x*v.z,this.x*v.y-this.y*v.x)}
+  mag(){return Math.sqrt(this.x*this.x+this.y*this.y+this.z*this.z)}
+  mag2(){return this.x*this.x+this.y*this.y+this.z*this.z}
+  unit(){const m=this.mag();return m<1e-15?new Vec3():new Vec3(this.x/m,this.y/m,this.z/m)}
+  rotate(a){const c=Math.cos(a),s=Math.sin(a);return new Vec3(this.x*c-this.y*s,this.y*c+this.x*s,this.z)}
+  compIn(v){return v.mul(this.dot(v)/v.mag2())}
+  subComp(v){return this.sub(this.compIn(v))}
+  magAlong(v){return this.dot(v)/v.mag()}
+  angleof(){const a=Math.atan2(this.y,this.x);return a<0?a+2*Math.PI:a}
+  toString(){return`(${this.x.toFixed(3)},${this.y.toFixed(3)},${this.z.toFixed(3)})`}
+  static fromString(s){
+    s=s.replace(/[()]/g,'').trim();
+    const parts=s.split(',');
+    if(parts.length<2)throw new Error('bad vec');
+    return new Vec3(+parts[0],+parts[1],parts[2]?+parts[2]:0);
+  }
+}
+
+// Default sagittal thickness (mm) assigned to a newly created optic.
+// Controls how far in Z the optic extends, which sets the sagittal aperture
+// for ray intersection checks. Each optic's thickness is independently
+// adjustable via the Thickness field in the properties panel.
+const DEFAULT_OPTIC_DEPTH = 60;
+
+// A "Plane" in 2D space — a line segment with a perpendicular (the cross product)
+class Plane {
+  constructor(start,v1,v2,b1,b2){
+    this.startpoint=start;
+    this.vector_1=v1;
+    this.vector_2=v2;
+    this.bded1=b1;this.bded2=b2;
+    this.cross=this.vector_1.cross(this.vector_2);
+    this.magvec1=this.vector_1.mag2();
+    this.magvec2=this.vector_2.mag2();
+  }
+  // depth: the sagittal (Z) extent of the optic, centred on z=0.
+  // startpoint is offset by -depth/2 in z so midpoint3d().z = 0.
+  static fromCenterDir(center,dir,b1,b2,depth=DEFAULT_OPTIC_DEPTH){
+    const half=dir.mul(0.5);
+    const sp=center.sub(half).sub(new Vec3(0,0,depth/2));
+    return new Plane(sp,dir,new Vec3(0,0,depth),b1,b2!==undefined?b2:false);
+  }
+  midpoint(){
+    // Return the 2D (XY) centre of the plane — z=0.
+    // In the Java the midpoint included z=depth/2 because optics were rendered
+    // as 3D parallelograms with perspective depth. In our 2D JS port we project
+    // everything onto the XY plane, so the 3D z component is never useful and
+    // only contaminates distance calculations and handle detection.
+    const m=this.startpoint.add(this.vector_1.mul(0.5));
+    return new Vec3(m.x,m.y,0);
+  }
+  midpoint3d(){
+    // Full 3D centre including z=depth/2 — use this in scatterRay physics,
+    // matching Java's midpoint() which returned the full 3D centre.
+    return this.startpoint.add(this.vector_1.add(this.vector_2).mul(0.5));
+  }
+  varmidpoint(d1,d2){return this.startpoint.add(this.vector_1.mul(d1)).add(this.vector_2.mul(d2||0))}
+  perpendicularBisector(len,d1,d2){
+    const mid=this.varmidpoint(d1===undefined?0.5:d1,d2===undefined?0.5:d2);
+    const bis=this.cross.unit().mul(len);
+    return {startpoint:mid,direct_vector:bis,ray:true};
+  }
+  perpendicular(){return this.cross}
+  angleOf(){
+    const ax=new Vec3(1,0,0);
+    const ax2=this.vector_2.cross(ax).unit();
+    const a=Math.atan2(this.vector_1.dot(ax2),this.vector_1.dot(ax));
+    return a<0?a+2*Math.PI:a;
+  }
+  moveCenterTo(p){
+    const d=p.sub(this.midpoint());
+    this.startpoint=this.startpoint.add(d);
+  }
+  rotateCenterTo(ang){
+    const oldmip=this.midpoint();
+    const ax=new Vec3(1,0,0);
+    const ax2=this.vector_2.cross(ax).unit();
+    this.vector_1=ax.mul(Math.cos(ang)).add(ax2.mul(Math.sin(ang))).mul(this.vector_1.mag());
+    const newmip=this.midpoint();
+    this.startpoint=this.startpoint.add(oldmip.sub(newmip));
+    this.cross=this.vector_1.cross(this.vector_2);
+    this.magvec1=this.vector_1.mag2();
+  }
+  rotateAboutPoint(d,m){
+    this.startpoint=this.startpoint.sub(d).rotate(m).add(d);
+    this.vector_1=this.vector_1.rotate(m);
+    this.vector_2=this.vector_2.rotate(m);
+    this.cross=this.vector_1.cross(this.vector_2);
+  }
+  displaceVector(p){this.startpoint=this.startpoint.add(p)}
+  intersectionWith(seg){
+    const dotp=this.cross.dot(seg.direct_vector);
+    if(Math.abs(dotp)<1e-15)return null;
+    const t1=-this.cross.dot(seg.startpoint.sub(this.startpoint))/dotp;
+    if(!seg.ray&&(t1<0||t1>1))return null;
+    const p=seg.startpoint.add(seg.direct_vector.mul(t1));
+    const t2=p.sub(this.startpoint).dot(this.vector_1)/this.magvec1;
+    const t3=this.magvec2>1e-15 ? p.sub(this.startpoint).dot(this.vector_2)/this.magvec2 : 0.5;
+    if(this.bded1&&(t2<0||t2>1))return null;
+    if(this.bded2&&(t3<0||t3>1))return null;
+    return {pt:p,t1,t2,t3};
+  }
+}
+
+// ===== MATERIAL =====
+class Material {
+  constructor(s){
+    this.birefr=false;
+    this.wavctr=560;
+    this.cindx0=1.50;this.cindx1=0;this.cindx2=0;this.cindx3=0;
+    this.ecindx0=1.50;this.ecindx1=0;this.ecindx2=0;this.ecindx3=0;
+    this.phi=0;this.theta=0;
+    this.dcosx=0;this.dcosy=0;this.dcosz=1;
+    if(s)this.fromString(s);
+  }
+  indexsq(wav){
+    const w=wav-this.wavctr;
+    let ind=this.cindx0+w*this.cindx1+0.5*w*w*this.cindx2+0.166666*w*w*w*this.cindx3;
+    if(ind<1)ind=1;
+    if(ind>10)ind=10;
+    return ind*ind;
+  }
+  eindexsq(wav){
+    const w=wav-this.wavctr;
+    let ind=this.ecindx0+w*this.ecindx1+0.5*w*w*this.ecindx2+0.166666*w*w*w*this.ecindx3;
+    if(ind<1)ind=1;
+    if(ind>10)ind=10;
+    return ind*ind;
+  }
+  refract(normal,ippt,ray,baseplane,reflect,materialfrom){
+    // Direct port of Java Material.refract k-vector formulation.
+    // Convention: normal points INTO the medium being entered (tomat).
+    normal=normal.unit();
+    const inout=ray.direct_vector.dot(normal);
+
+    // frommat = medium ray is currently in; tomat = medium being entered.
+    const frommat = inout<0 ? this : materialfrom;
+    const tomat   = inout<0 ? materialfrom : this;
+
+    // When inout<0 the ray opposes the normal, meaning it comes from the other side —
+    // flip normal so it still points into tomat (the medium being entered).
+    if(inout<0) normal=normal.mul(-1);
+
+    // k-vector: kvec = dir.unit() * ray.index in both cases for isotropic materials.
+    // Java: frommat==null → dir.unit()*r.index; frommat!=null → frommat.divide_dielectric_tensor(dir).unit()*r.index
+    // For isotropic: divide_dielectric_tensor(v) = v/n², so unit() = dir.unit(), giving same result.
+    const kvec = ray.direct_vector.unit().mul(ray.index);
+
+    const keep=kvec.subComp(normal);  // tangential component of kvec
+    const oindsq=(tomat===null||tomat===undefined) ? 1.0 : tomat.indexsq(ray.wavelength);
+    const qisq=oindsq-keep.mag2();    // n2² - |k_t|²
+
+    let nkvec;
+    if(qisq>0 && !reflect){
+      nkvec=keep.add(normal.mul(Math.sqrt(qisq)));
+    } else {
+      // Total internal reflection or forced reflection
+      nkvec=keep.sub(kvec.sub(keep));  // = 2*keep - kvec
+    }
+
+    // svec is the Poynting vector direction (= nkvec for isotropic materials)
+    const svec=nkvec;
+
+    const newRay=new OTRay({startpoint:ippt,direct_vector:svec,ray:true},ray.wavelength,nkvec.mag());
+    newRay.extralen=0;
+    newRay.parentRay=ray;
+    return [newRay];
+  }
+  toString(){
+    let s=`wavctr=${this.wavctr} cindx0=${this.cindx0} cindx1=${this.cindx1} cindx2=${this.cindx2} cindx3=${this.cindx3} birefr=${this.birefr?'y':'n'}`;
+    if(this.birefr)
+      s+=` phi=${this.phi*RAD2DEG} theta=${this.theta*RAD2DEG} ecindx0=${this.ecindx0} ecindx1=${this.ecindx1} ecindx2=${this.ecindx2} ecindx3=${this.ecindx3}`;
+    return s;
+  }
+  fromString(s){
+    // Accept both old (sellmeier=y/n) and new format; ignore sellmeier
+    const tokens=s.split(/[\s=]+/);
+    for(let i=0;i<tokens.length-1;i+=2){
+      const k=tokens[i],v=tokens[i+1];
+      if(['wavctr','cindx0','cindx1','cindx2','cindx3',
+          'ecindx0','ecindx1','ecindx2','ecindx3'].includes(k)) this[k]=+v;
+      else if(k==='birefr') this.birefr=!(v==='n'||v==='N');
+      else if(k==='phi') this.phi=+v/RAD2DEG;
+      else if(k==='theta') this.theta=+v/RAD2DEG;
+      // sellmeier keyword: if present and 'y', try to keep cindx0 unchanged (already set)
+    }
+    this._calcdircos();
+  }
+  _calcdircos(){
+    this.dcosz=Math.cos(this.theta);
+    this.dcosx=Math.sin(this.theta)*Math.cos(this.phi);
+    this.dcosy=Math.sin(this.theta)*Math.sin(this.phi);
+  }
+}
+
+// ===== RAY =====
+const RAD2DEG=57.29578;
+const SENSITIVITY=1e-5;
+
+class OTRay {
+  constructor(seg,wv=560,idx=1){
+    this.seg=seg; // {startpoint, direct_vector, ray}
+    this.wavelength=wv;
+    this.index=idx;
+    this.extralen=0;
+    this.parentRay=null;
+    this.parentOptic=null;
+    this._colorCache=null;
+  }
+  get direct_vector(){return this.seg.direct_vector}
+  get startpoint(){return this.seg.startpoint}
+  getColor(alpha=1){
+    const wv=this.wavelength;
+    if(wv>=300&&wv<=800){
+      let r=(wv>600?1:(wv>540?(wv-540)/61:(wv>300&&wv<=450?(450-wv)/150:0)));
+      let g2=(wv<400?0:(wv<=550?(wv-400)/151:(wv<580?1:(wv<650?(650-wv)/71:0))));
+      let b=(wv>=300&&wv<480?1:(wv<550?(550-wv)/71:0));
+      return`rgba(${Math.round(r*255)},${Math.round(g2*255)},${Math.round(b*255)},${alpha})`;
+    }
+    return`rgba(200,200,200,${alpha})`;
+  }
+}
+
+// ===== BASE OPTIC =====
+let opticSerial=1;
+class Optic {
+  constructor(){this.id=opticSerial++;this.locked=false}
+  originateRays(){return null}
+  scatterRay(ray){return null}
+  render(ctx,zg){} 
+  getPosition(){return new Vec3()}
+  move(p){}
+  rotate(ang){}
+  getFields(){return[]}
+  getFieldValue(k){return null}
+  setFieldValue(k,v){}
+  postLoad(){}  // called after all fields are deserialized; override to do cleanup
+  serialize(){
+    let s=` opticnumber ${this.id}`;
+    for(const f of this.getFields()){
+      if(f.type&&!f.type.includes('-')){
+        const val=this.getFieldValue(f.key);
+        if(val!==null)s+=` ${f.key} ${String(val).replace(/ /g,'_')}`;
+      }
+    }
+    return s;
+  }
+  static deserializeAttribs(line,optic){
+    const tokens=line.trim().split(/\s+/);
+    let i=0;
+    // Skip the leading type token — matches either the class name or known aliases
+    // (TextLabel serializes as 'text', GaussianSource as 'gaussian', etc.)
+    const aliases={'textlabel':'text','gaussiansource':'gaussian','aberrationsource':'aberration'};
+    const t0=tokens[0].toLowerCase();
+    const cn=optic.constructor.name.toLowerCase();
+    if(i<tokens.length&&(t0===cn||t0===(aliases[cn]||'__none__')))i++;
+
+    // Build key-value pairs first
+    const pairs=[];
+    while(i<tokens.length-1){
+      pairs.push([tokens[i],tokens[i+1]]);
+      i+=2;
+    }
+
+    // First pass: opticnumber and nel (must be sized before elm/material are set)
+    for(const[key,val] of pairs){
+      if(key==='opticnumber'){optic.id=+val;if(+val>=opticSerial)opticSerial=+val+1;}
+      else if(key==='locked'){optic.locked=(val==='true');}
+      else if(key==='nel'){try{optic.setFieldValue('nel',val)}catch(e){}}
+    }
+
+    // Second pass: everything else
+    for(const[key,val] of pairs){
+      if(key==='opticnumber'||key==='locked'||key==='nel')continue;
+      try{optic.setFieldValue(key,val.replace(/_/g,' '))}catch(e){}
+    }
+
+    // Post-load hook: allows optics to do cleanup after all fields are set
+    optic.postLoad();
+  }
+}
+
+// ===== LASER =====
+class Laser extends Optic {
+  constructor(mid,len=40){
+    super();
+    const dir=new Vec3(0,len,0);  // vertical body -> cross points in +x -> rays fire rightward
+    this.pl=Plane.fromCenterDir(mid,dir,true,true);
+    this.wavelength=560;this.bandwidth=50;this.rays=2;
+    this.angle_span=0.4;this.laseron=true;this.back=false;
+    this.poly=false;this.pointsrc=false;
+  }
+  getPosition(){return this.pl.midpoint()}
+  move(p){if(!this.locked)this.pl.moveCenterTo(p)}
+  rotate(ang){if(!this.locked)this.pl.rotateCenterTo(ang/RAD2DEG)}
+  getFields(){return[
+    {key:'wavelength',label:'Wavelength nm',type:'n'},
+    {key:'length',label:'Length mm',type:'n'},
+    {key:'thickness',label:'Thickness mm',type:'n'},
+    {key:'rays',label:'# rays',type:'n'},
+    {key:'poly',label:'Polychromatic?',type:'b'},
+    {key:'pointsrc',label:'Point source?',type:'b'},
+    {key:'angle_span',label:'Span',type:'n'},
+    {key:'bandwidth',label:'Bandwidth nm',type:'n'},
+    {key:'back',label:'Back absorb?',type:'b'},
+    {key:'laseron',label:'On?',type:'b'},
+    {key:'mid',label:'Position',type:'p'},
+    {key:'rot',label:'Angle°',type:'n'},
+    {key:'locked',label:'Locked?',type:'b'},
+  ]}
+  getFieldValue(k){
+    if(k==='length')return this.pl.vector_1.mag();
+    if(k==='thickness')return this.pl.vector_2.mag().toFixed(2);
+    if(k==='mid')return this.pl.midpoint().toString();
+    if(k==='rot')return(this.pl.angleOf()*RAD2DEG).toFixed(2);
+    if(['wavelength','bandwidth','angle_span','rays'].includes(k))return this[k];
+    if(['poly','pointsrc','back','laseron','locked'].includes(k))return this[k];
+    return null;
+  }
+  setFieldValue(k,v){
+    if(k==='length'&&+v>0){const d=+v,mid=this.pl.midpoint();this.pl=new Plane(mid.sub(this.pl.vector_1.unit().mul(d*0.5)).sub(this.pl.vector_2.unit().mul(this.pl.vector_2.mag()*0.5)),this.pl.vector_1.unit().mul(d),this.pl.vector_2,true,true);}
+    else if(k==='thickness'&&+v>0){
+      const d=+v,mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.mul(0.5)).sub(this.pl.vector_2.unit().mul(d*0.5)),
+        this.pl.vector_1, this.pl.vector_2.unit().mul(d), true, true);
+    }
+    else if(k==='wavelength'&&+v>0)this.wavelength=+v;
+    else if(k==='bandwidth'&&+v>0)this.bandwidth=+v;
+    else if(k==='angle_span'&&+v>0)this.angle_span=+v;
+    else if(k==='rays'){const i=Math.round(+v);if(i>=1&&i<=100)this.rays=i}
+    else if(k==='poly')this.poly=(v==='true'||v===true);
+    else if(k==='pointsrc')this.pointsrc=(v==='true'||v===true);
+    else if(k==='back')this.back=(v==='true'||v===true);
+    else if(k==='laseron')this.laseron=(v==='true'||v===true);
+    else if(k==='locked')this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{const pt=Vec3.fromString(v);this.pl.moveCenterTo(pt)}catch(e){}}
+    else if(k==='rot')this.pl.rotateCenterTo(+v/RAD2DEG);
+    else if(k==='cr1'||k==='cr2'||k==='cr3')try{/* ignore these fields */}catch(e){}
+  }
+  originateRays(){
+    if(!this.laseron)return null;
+    const rays=[];
+    const pb=(len,d1,d2)=>{
+      const mid=this.pl.varmidpoint(d1,d2);
+      const bis=this.pl.cross.unit().mul(len);
+      return {startpoint:mid,direct_vector:bis,ray:true};
+    };
+    if(this.poly){
+      const ct=this.bandwidth/Math.max(1,this.rays);
+      for(let wv=this.wavelength-this.bandwidth/2;wv<=this.wavelength+this.bandwidth/2;wv+=ct){
+        rays.push(new OTRay(pb(1000,0.5,0.5),wv,1));
+      }
+    } else if(this.pointsrc){
+      const outvec=this.pl.cross.unit();
+      const sidevec=this.pl.vector_1.unit();
+      const step=this.rays<=1?0:2*this.angle_span/this.rays;
+      // Center ray first, then the rest
+      rays.push(new OTRay({startpoint:this.pl.midpoint3d(),direct_vector:outvec,ray:true},this.wavelength,1));
+      if(this.rays>1){
+        for(let d=-this.angle_span;d<=this.angle_span+1e-9;d+=Math.max(step,1e-9)){
+          if(Math.abs(d)<1e-9)continue; // skip center, already added
+          const dirvec=outvec.add(sidevec.mul(d));
+          rays.push(new OTRay({startpoint:this.pl.midpoint3d(),direct_vector:dirvec,ray:true},this.wavelength,1));
+        }
+      }
+    } else if(this.rays===1){
+      rays.push(new OTRay(pb(1000,0.5,0.5),this.wavelength,1));
+    } else {
+      // Center ray first, then the rest
+      rays.push(new OTRay(pb(1000,0.5,0.5),this.wavelength,1));
+      const ct=this.angle_span/this.rays;
+      for(let d=0.5-0.5*this.angle_span;d<=0.5+0.5*this.angle_span+1e-9;d+=ct){
+        if(Math.abs(d-0.5)>1e-9) rays.push(new OTRay(pb(1000,d,0.5),this.wavelength,1));
+      }
+      for(let d=0.5-0.5*this.angle_span;d<=0.5+0.5*this.angle_span+1e-9;d+=ct){
+        if(Math.abs(d-0.5)>1e-9) rays.push(new OTRay(pb(1000,0.5,d),this.wavelength,1));
+      }
+    }
+    return rays;
+  }
+  scatterRay(ray){
+    if(!this.back)return null;
+    const ipt=this.pl.intersectionWith(ray.seg);
+    if(!ipt||ipt.t1<SENSITIVITY)return null;
+    const ret=new OTRay({startpoint:ray.startpoint,direct_vector:ray.direct_vector.unit().mul(ipt.t1*ray.direct_vector.mag()),ray:false},ray.wavelength,ray.index);
+    const p=this.pl.cross.unit();
+    if(ray.direct_vector.dot(p)<0){
+      const nr=new OTRay({startpoint:ipt.pt,direct_vector:ray.direct_vector,ray:true},ray.wavelength,ray.index);
+      nr.parentRay=ray;
+      return{returnRay:ret,t1:ipt.t1,newRays:[nr]};
+    }
+    return null;
+  }
+  render(ctx,zg){
+    ctx.strokeStyle='#aaaaaa';
+    ctx.lineWidth=2;
+    zg.renderPlane(ctx,this.pl.startpoint,this.pl.vector_1,this.pl.vector_2);
+    // Arrow indicating beam direction
+    const mid=this.pl.midpoint3d();
+    const dir=this.pl.cross.unit().mul(8/zg.mag);
+    ctx.strokeStyle='#ffdd44';
+    ctx.lineWidth=1;
+    zg.line(ctx,mid,mid.add(dir));
+  }
+  serialize(){return`laser${super.serialize()}`}
+}
+
+// ===== GAUSSIAN BEAM SOURCE =====
+// Port of Java Gaussian.java. Emits 5 probe rays that sample the 4 Gaussian
+// beam parameters (position and angle in each transverse plane). The traced
+// positions and angles of these rays at any reference plane are used to
+// reconstruct the ABCD system matrix, from which beam width, radius of
+// curvature, waist size and position are derived.
+class GaussianSource extends Optic {
+  constructor(mid, len=30){
+    super();
+    const dir=new Vec3(0,len,0);
+    this.pl=Plane.fromCenterDir(mid,dir,true,true);
+    this.wavelength=560;
+    this.delta_angle=0.001;
+    this.delta_pos=1.0;
+    this.delta_wv=1.0;
+    this.radiusc_s=1e20; this.beamwidth_s=10;
+    this.radiusc_t=1e20; this.beamwidth_t=10;
+    this.back=true; this.laseron=true; this.gvd=false;
+  }
+
+  // axis1: component of (0,0,1) perpendicular to the optical axis (in-plane transverse)
+  axis1(){
+    const outvec=this.pl.cross.unit();
+    const p1=new Vec3(0,0,1);
+    return p1.sub(outvec.mul(p1.dot(outvec))).unit();
+  }
+  // axis2: the other transverse axis (cross product)
+  axis2(){
+    const outvec=this.pl.cross.unit();
+    const p1=new Vec3(0,0,1);
+    const ax1=p1.sub(outvec.mul(p1.dot(outvec))).unit();
+    return outvec.cross(ax1).unit();
+  }
+
+  getPosition(){return this.pl.midpoint()}
+  move(p){if(!this.locked)this.pl.moveCenterTo(p)}
+  rotate(ang){if(!this.locked)this.pl.rotateCenterTo(ang/RAD2DEG)}
+
+  getFields(){return[
+    {key:'wavelength', label:'Wavelength nm',             type:'n'},
+    {key:'length',     label:'Length mm',                 type:'n'},
+    {key:'thickness',label:'Thickness mm',type:'n'},
+    {key:'delta_angle',label:'Delta angle (rad)',         type:'n'},
+    {key:'delta_pos',  label:'Delta position (mm)',       type:'n'},
+    {key:'radiusc_s',  label:'Radius of curv. sagittal',  type:'n'},
+    {key:'beamwidth_s',label:'Beam width sagittal (mm)',  type:'n'},
+    {key:'radiusc_t',  label:'Radius of curv. tangential',type:'n'},
+    {key:'beamwidth_t',label:'Beam width tangential (mm)',type:'n'},
+    {key:'back',       label:'Back absorb?',              type:'b'},
+    {key:'laseron',    label:'On?',                       type:'b'},
+    {key:'gvd',        label:'GVD measure?',              type:'b'},
+    {key:'delta_wv',   label:'Delta wavelength (nm)',     type:'n'},
+    {key:'mid',        label:'Position',                  type:'p'},
+    {key:'rot',        label:'Angle°',                    type:'n'},
+    {key:'locked',     label:'Locked?',                   type:'b'},
+  ]}
+
+  getFieldValue(k){
+    if(k==='length')    return this.pl.vector_1.mag().toFixed(2);
+    if(k==='thickness')return this.pl.vector_2.mag().toFixed(2);
+    if(k==='mid')       return this.pl.midpoint().toString();
+    if(k==='rot')       return(this.pl.angleOf()*RAD2DEG).toFixed(2);
+    if(['wavelength','delta_angle','delta_pos','delta_wv',
+        'radiusc_s','beamwidth_s','radiusc_t','beamwidth_t'].includes(k)) return this[k];
+    if(['back','laseron','gvd','locked'].includes(k)) return this[k];
+    return null;
+  }
+
+  setFieldValue(k,v){
+    if(k==='length'&&+v>0){const d=+v,mid=this.pl.midpoint();this.pl=new Plane(mid.sub(this.pl.vector_1.unit().mul(d*0.5)).sub(this.pl.vector_2.unit().mul(this.pl.vector_2.mag()*0.5)),this.pl.vector_1.unit().mul(d),this.pl.vector_2,true,true);}
+    else if(k==='thickness'&&+v>0){
+      const d=+v,mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.mul(0.5)).sub(this.pl.vector_2.unit().mul(d*0.5)),
+        this.pl.vector_1, this.pl.vector_2.unit().mul(d), true, true);
+    }
+    else if(k==='mid'){try{this.pl.moveCenterTo(Vec3.fromString(v))}catch(e){}}
+    else if(k==='rot') this.pl.rotateCenterTo(+v/RAD2DEG);
+    else if(['wavelength','delta_angle','delta_pos','delta_wv',
+             'radiusc_s','beamwidth_s','radiusc_t','beamwidth_t'].includes(k)) this[k]=+v;
+    else if(['back','laseron','gvd'].includes(k)) this[k]=(v==='true'||v===true);
+    else if(k==='locked') this.locked=(v==='true'||v===true);
+  }
+
+  originateRays(){
+    if(!this.laseron) return null;
+    const rays=[];
+    const ax1=this.axis1();   // sagittal: z-component perpendicular to beam
+    const ax2=this.axis2();   // tangential: in-plane perpendicular to beam
+
+    // Use perpendicularBisector to generate rays starting on the plane,
+    // matching the Java OriginateRays() exactly.
+    // varmidpoint(d1,d2): d1 along vector_1, d2 along vector_2
+    const makeSeg=(d1,d2,extraDir,wv=this.wavelength)=>{
+      const s=this.pl.perpendicularBisector(100,d1,d2);
+      if(extraDir) s.direct_vector=s.direct_vector.add(extraDir.mul(s.direct_vector.mag()));
+      return new OTRay({startpoint:s.startpoint,direct_vector:s.direct_vector,ray:true},wv,1);
+    };
+
+    // Ray 0: axial centre
+    const r0=makeSeg(0.5,0.5);
+    r0.gaussianProbeIdx=0; r0.gaussianSource=this; rays.push(r0);
+
+    // Ray 1: displaced delta_pos along vector_2 (depth/sagittal direction)
+    const r1=makeSeg(0.5, 0.5+this.delta_pos/this.pl.vector_2.mag());
+    r1.gaussianProbeIdx=1; r1.gaussianSource=this; rays.push(r1);
+
+    // Ray 2: displaced delta_pos along vector_1 (tangential direction)
+    const r2=makeSeg(0.5+this.delta_pos/this.pl.vector_1.mag(), 0.5);
+    r2.gaussianProbeIdx=2; r2.gaussianSource=this; rays.push(r2);
+
+    // Ray 3: angled delta_angle along axis1 (sagittal plane)
+    const r3=makeSeg(0.5,0.5,ax1.mul(this.delta_angle));
+    r3.gaussianProbeIdx=3; r3.gaussianSource=this; rays.push(r3);
+
+    // Ray 4: angled delta_angle along axis2 (tangential plane)
+    const r4=makeSeg(0.5,0.5,ax2.mul(this.delta_angle));
+    r4.gaussianProbeIdx=4; r4.gaussianSource=this; rays.push(r4);
+
+    // Optional GVD rays at different wavelengths
+    if(this.gvd){
+      const wvs=[this.wavelength+0.5*this.delta_wv, this.wavelength-0.5*this.delta_wv,
+                 this.wavelength+this.delta_wv,       this.wavelength-this.delta_wv];
+      wvs.forEach((wv,i)=>{
+        const r=makeSeg(0.5,0.5,null,wv);
+        r.gaussianProbeIdx=5+i; r.gaussianSource=this; rays.push(r);
+      });
+    }
+    return rays;
+  }
+
+  scatterRay(ray){
+    if(!this.back) return null;
+    const ipt=this.pl.intersectionWith(ray.seg);
+    if(!ipt||ipt.t1<SENSITIVITY) return null;
+    const ret=new OTRay({startpoint:ray.startpoint,
+      direct_vector:ray.direct_vector.unit().mul(ipt.t1*ray.direct_vector.mag()),ray:false},
+      ray.wavelength,ray.index);
+    // Only pass through rays arriving from the front
+    const p=this.pl.cross.unit();
+    if(ray.direct_vector.dot(p)<0){
+      const nr=new OTRay({startpoint:ipt.pt,direct_vector:ray.direct_vector,ray:true},
+        ray.wavelength,ray.index);
+      nr.parentRay=ray;
+      return{returnRay:ret,t1:ipt.t1,newRays:[nr]};
+    }
+    return{returnRay:ret,t1:ipt.t1,newRays:[]};
+  }
+
+  render(ctx,zg){
+    ctx.strokeStyle='#00cccc'; ctx.lineWidth=2;
+    zg.renderPlane(ctx,this.pl.startpoint,this.pl.vector_1,this.pl.vector_2);
+    const mid=this.pl.midpoint3d();
+    const dir=this.pl.cross.unit().mul(8/zg.mag);
+    ctx.strokeStyle='#00ffff'; ctx.lineWidth=1.5;
+    zg.line(ctx,mid,mid.add(dir));
+    // G label
+    const[sx,sy]=zg.worldToScreen(mid.add(this.pl.vector_1.unit().mul(this.pl.vector_1.mag()*0.5+6/zg.mag)));
+    ctx.fillStyle='#00cccc'; ctx.font=`${Math.max(10,12/zg.mag*zg.mag)}px monospace`;
+    ctx.fillText('G',sx,sy);
+  }
+
+  serialize(){
+    // Emit 'gaussian' to match the original Java dat file format
+    let s=`gaussian opticnumber ${this.id} wavelength ${this.wavelength} length ${this.pl.vector_1.mag().toFixed(2)} delta_angle ${this.delta_angle} delta_pos ${this.delta_pos} radiusc_s ${this.radiusc_s} beamwidth_s ${this.beamwidth_s} radiusc_t ${this.radiusc_t} beamwidth_t ${this.beamwidth_t} back ${this.back} laseron ${this.laseron} gvd ${this.gvd} delta_wv ${this.delta_wv} mid ${this.pl.midpoint()} rot ${(this.pl.angleOf()*RAD2DEG).toFixed(2)} locked ${this.locked}`;
+    return s;
+  }
+
+  // Static deserializer — handles 'gaussian' type name mismatch with class name
+  static deserialize(line){
+    const op=new GaussianSource(new Vec3(300,300));
+    Optic.deserializeAttribs(line.replace(/^gaussian\b/,'gaussiansource'),op);
+    return op;
+  }
+}
+
+// ===== ABERRATION SOURCE =====
+// Extends GaussianSource with 9 additional probe rays (indices 5-13) that probe
+// large angular and positional deviations, enabling Seidel aberration extraction.
+// Direct port of Java Aberration.java (extends Gaussian).
+class AberrationSource extends GaussianSource {
+  constructor(mid, len=30){
+    super(mid, len);
+    // Override Gaussian defaults with Aberration defaults
+    this.delta_pos=0.01;
+    this.delta_angle=1e-4;
+    this.large_dev_factor=100.0;
+    this.source_f_n=5.0;
+    this.source_size=1.0;
+    // beamwidth set from f/# like Java constructor
+    const scalefactor=1e-6;
+    this.beamwidth_s=this.beamwidth_t=0.5*this.source_f_n*this.wavelength*scalefactor;
+  }
+
+  getFields(){
+    // All Gaussian fields plus the Aberration-specific ones
+    return[
+      {key:'wavelength',        label:'Wavelength nm',              type:'n'},
+      {key:'length',            label:'Length mm',                  type:'n'},
+      {key:'delta_angle',       label:'Delta angle (rad)',           type:'n'},
+      {key:'delta_pos',         label:'Delta position (mm)',         type:'n'},
+      {key:'large_dev_factor',  label:'Large deviation factor',      type:'n'},
+      {key:'delta_wv',          label:'Delta wavelength (nm)',       type:'n'},
+      {key:'source_f_n',        label:'Source F/#',                  type:'n'},
+      {key:'source_size',       label:'Source field size',           type:'n'},
+      {key:'back',              label:'Back absorb?',                type:'b'},
+      {key:'laseron',           label:'On?',                        type:'b'},
+      {key:'mid',               label:'Position',                   type:'p'},
+      {key:'rot',               label:'Angle°',                     type:'n'},
+      {key:'locked',            label:'Locked?',                    type:'b'},
+    ];
+  }
+  getFieldValue(k){
+    if(k==='large_dev_factor') return this.large_dev_factor;
+    if(k==='source_f_n')       return this.source_f_n;
+    if(k==='source_size')      return this.source_size;
+    return super.getFieldValue(k);
+  }
+  setFieldValue(k,v){
+    if(k==='large_dev_factor'&&+v>0){ this.large_dev_factor=+v; }
+    else if(k==='source_f_n'&&+v>0){
+      this.source_f_n=+v;
+      const scalefactor=1e-6;
+      this.beamwidth_s=this.beamwidth_t=0.5*this.source_f_n*this.wavelength*scalefactor;
+    }
+    else if(k==='source_size'&&+v>0){ this.source_size=+v; }
+    else super.setFieldValue(k,v);
+  }
+
+  originateRays(){
+    if(!this.laseron) return null;
+    // Start with the 5 Gaussian probe rays (indices 0-4)
+    const rays=super.originateRays();
+    if(!rays) return null;
+
+    const lda=this.delta_angle*this.large_dev_factor;
+    const ldp=this.delta_pos*this.large_dev_factor;
+    const ax1=this.axis1();
+    const ax2=this.axis2();
+
+    const makeSeg=(d1,d2,extraDir,wv=this.wavelength)=>{
+      const s=this.pl.perpendicularBisector(100,d1,d2);
+      if(extraDir) s.direct_vector=s.direct_vector.add(extraDir.mul(s.direct_vector.mag()));
+      const r=new OTRay({startpoint:s.startpoint,direct_vector:s.direct_vector,ray:true},wv,1);
+      return r;
+    };
+
+    // Ray 5: ax2 angled -lda, centre position
+    const r5=makeSeg(0.5,0.5,ax2.mul(-lda));
+    r5.gaussianProbeIdx=5; r5.gaussianSource=this; rays.push(r5);
+
+    // Ray 6: ax2 angled -lda, displaced ldp along v2
+    const r6=makeSeg(0.5,0.5+ldp/this.pl.vector_2.mag(),ax2.mul(-lda));
+    r6.gaussianProbeIdx=6; r6.gaussianSource=this; rays.push(r6);
+
+    // Ray 7: ax1 angled -lda, displaced ldp along v2
+    const r7=makeSeg(0.5,0.5+ldp/this.pl.vector_2.mag(),ax1.mul(-lda));
+    r7.gaussianProbeIdx=7; r7.gaussianSource=this; rays.push(r7);
+
+    // Ray 8: ax1 angled +lda, displaced ldp along v2
+    const r8=makeSeg(0.5,0.5+ldp/this.pl.vector_2.mag(),ax1.mul(lda));
+    r8.gaussianProbeIdx=8; r8.gaussianSource=this; rays.push(r8);
+
+    // Ray 9: ax1 angled -lda, displaced 2*ldp along v2
+    const r9=makeSeg(0.5,0.5+2*ldp/this.pl.vector_2.mag(),ax1.mul(-lda));
+    r9.gaussianProbeIdx=9; r9.gaussianSource=this; rays.push(r9);
+
+    // Ray 10: no angle, displaced ldp along v2
+    const r10=makeSeg(0.5,0.5+ldp/this.pl.vector_2.mag());
+    r10.gaussianProbeIdx=10; r10.gaussianSource=this; rays.push(r10);
+
+    // Ray 11: no angle, centre position, wavelength+delta_wv
+    const r11=makeSeg(0.5,0.5,null,this.wavelength+this.delta_wv);
+    r11.gaussianProbeIdx=11; r11.gaussianSource=this; rays.push(r11);
+
+    // Ray 12: ax1 angled +delta_angle, centre, wavelength+delta_wv
+    const r12=makeSeg(0.5,0.5,ax1.mul(this.delta_angle),this.wavelength+this.delta_wv);
+    r12.gaussianProbeIdx=12; r12.gaussianSource=this; rays.push(r12);
+
+    // Ray 13: ax1 angled +lda, centre, wavelength+delta_wv
+    const r13=makeSeg(0.5,0.5,ax1.mul(lda),this.wavelength+this.delta_wv);
+    r13.gaussianProbeIdx=13; r13.gaussianSource=this; rays.push(r13);
+
+    return rays;
+  }
+
+  render(ctx,zg){
+    // Draw like GaussianSource but in orange to distinguish
+    ctx.strokeStyle='#ff8800'; ctx.lineWidth=2;
+    zg.renderPlane(ctx,this.pl.startpoint,this.pl.vector_1,this.pl.vector_2);
+    const mid=this.pl.midpoint3d();
+    const dir=this.pl.cross.unit().mul(8/zg.mag);
+    ctx.strokeStyle='#ffaa00'; ctx.lineWidth=1.5;
+    zg.line(ctx,mid,mid.add(dir));
+    const[sx,sy]=zg.worldToScreen(mid.add(this.pl.vector_1.unit().mul(this.pl.vector_1.mag()*0.5+6/zg.mag)));
+    ctx.fillStyle='#ff8800'; ctx.font='12px monospace';
+    ctx.fillText('A',sx,sy);
+  }
+
+  serialize(){
+    return`aberration opticnumber ${this.id} wavelength ${this.wavelength} length ${this.pl.vector_1.mag().toFixed(2)} delta_angle ${this.delta_angle} delta_pos ${this.delta_pos} large_dev_factor ${this.large_dev_factor} delta_wv ${this.delta_wv} source_f_n ${this.source_f_n} source_size ${this.source_size} back ${this.back} laseron ${this.laseron} mid ${this.pl.midpoint()} rot ${(this.pl.angleOf()*RAD2DEG).toFixed(2)} locked ${this.locked}`;
+  }
+
+  static deserialize(line){
+    const op=new AberrationSource(new Vec3(300,300));
+    Optic.deserializeAttribs(line.replace(/^aberration\b/,'aberrationsource'),op);
+    return op;
+  }
+}
+
+// ===== QUIVER SOURCE =====
+// A 2D grid of rays, either from a point source (diverging, angle-spaced)
+// or a parallel beam (laterally spaced). Optionally clipped to an ellipse.
+class QuiverSource extends Optic {
+  constructor(mid, len=40){
+    super();
+    const dir=new Vec3(0,len,0);
+    this.pl=Plane.fromCenterDir(mid,dir,true,true);
+    this.wavelength=560;
+    this.nx=5;           // rays across (horizontal in panel)
+    this.ny=5;           // rays up (out-of-plane / sagittal)
+    this.span_x=0.1;     // half-span: angle tangent (point) or mm (parallel)
+    this.span_y=0.1;
+    this.pointsrc=true;  // true = diverging point source, false = parallel beam
+    this.ellipse=false;  // clip to ellipse
+    this.laseron=true;
+    this.back=false;
+  }
+
+  getPosition(){return this.pl.midpoint()}
+  move(p){if(!this.locked)this.pl.moveCenterTo(p)}
+  rotate(ang){if(!this.locked)this.pl.rotateCenterTo(ang/RAD2DEG)}
+
+  getFields(){return[
+    {key:'wavelength', label:'Wavelength nm',    type:'n'},
+    {key:'length',     label:'Length mm',         type:'n'},
+    {key:'nx',         label:'Rays X (tangential)',type:'n'},
+    {key:'ny',         label:'Rays Y (sagittal)', type:'n'},
+    {key:'span_x',     label:'Half-span X',        type:'n'},
+    {key:'span_y',     label:'Half-span Y',        type:'n'},
+    {key:'thickness',label:'Thickness mm',type:'n'},
+    {key:'pointsrc',   label:'Point source?',      type:'b'},
+    {key:'ellipse',    label:'Clip to ellipse?',   type:'b'},
+    {key:'laseron',    label:'On?',                type:'b'},
+    {key:'back',       label:'Back absorb?',       type:'b'},
+    {key:'mid',        label:'Position',           type:'p'},
+    {key:'rot',        label:'Angle°',             type:'n'},
+    {key:'locked',     label:'Locked?',            type:'b'},
+  ]}
+
+  getFieldValue(k){
+    if(k==='length')  return this.pl.vector_1.mag().toFixed(2);
+    if(k==='thickness')return this.pl.vector_2.mag().toFixed(2);
+    if(k==='mid')     return this.pl.midpoint().toString();
+    if(k==='rot')     return(this.pl.angleOf()*RAD2DEG).toFixed(2);
+    if(['wavelength','nx','ny','span_x','span_y'].includes(k)) return this[k];
+    if(['pointsrc','ellipse','laseron','back','locked'].includes(k)) return this[k];
+    return null;
+  }
+
+  setFieldValue(k,v){
+    if(k==='length'&&+v>0){const d=+v,mid=this.pl.midpoint();this.pl=new Plane(mid.sub(this.pl.vector_1.unit().mul(d*0.5)).sub(this.pl.vector_2.unit().mul(this.pl.vector_2.mag()*0.5)),this.pl.vector_1.unit().mul(d),this.pl.vector_2,true,true);}
+    else if(k==='thickness'&&+v>0){
+      const d=+v,mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.mul(0.5)).sub(this.pl.vector_2.unit().mul(d*0.5)),
+        this.pl.vector_1, this.pl.vector_2.unit().mul(d), true, true);
+    }
+    else if(k==='mid'){try{this.pl.moveCenterTo(Vec3.fromString(v))}catch(e){}}
+    else if(k==='rot') this.pl.rotateCenterTo(+v/RAD2DEG);
+    else if(k==='wavelength'&&+v>0) this.wavelength=+v;
+    else if(k==='nx'){const i=Math.round(+v);if(i>=1&&i<=50)this.nx=i}
+    else if(k==='ny'){const i=Math.round(+v);if(i>=1&&i<=50)this.ny=i}
+    else if(k==='span_x'&&+v>0) this.span_x=+v;
+    else if(k==='span_y'&&+v>0) this.span_y=+v;
+    else if(k==='pointsrc') this.pointsrc=(v==='true'||v===true);
+    else if(k==='ellipse')  this.ellipse=(v==='true'||v===true);
+    else if(k==='laseron')  this.laseron=(v==='true'||v===true);
+    else if(k==='back')     this.back=(v==='true'||v===true);
+    else if(k==='locked')   this.locked=(v==='true'||v===true);
+  }
+
+  originateRays(){
+    if(!this.laseron) return null;
+    const rays=[];
+    const outvec=this.pl.cross.unit();
+    const zhat=new Vec3(0,0,1);
+    const ax1=zhat.sub(outvec.mul(zhat.dot(outvec))).unit();  // sagittal (Y)
+    const ax2=outvec.cross(ax1).unit();                        // tangential (X)
+    const cx=this.pl.midpoint3d();
+
+    const makeRay=(tx,ty)=>{
+      const vx=tx*this.span_x, vy=ty*this.span_y;
+      let startpt, dir;
+      if(this.pointsrc){
+        startpt=cx;
+        dir=outvec.add(ax1.mul(vy)).add(ax2.mul(vx)).unit().mul(100);
+      } else {
+        startpt=cx.add(ax1.mul(vy)).add(ax2.mul(vx));
+        dir=outvec.mul(100);
+      }
+      const r=new OTRay({startpoint:startpt,direct_vector:dir,ray:true},this.wavelength,1);
+      r.quiverSource=this;
+      return r;
+    };
+
+    // Center ray always first
+    rays.push(makeRay(0,0));
+
+    // Then the rest of the grid
+    for(let iy=0;iy<this.ny;iy++){
+      const ty=this.ny>1 ? (iy/(this.ny-1))*2-1 : 0;
+      for(let ix=0;ix<this.nx;ix++){
+        const tx=this.nx>1 ? (ix/(this.nx-1))*2-1 : 0;
+        if(Math.abs(tx)<1e-9 && Math.abs(ty)<1e-9) continue; // skip center, already added
+        if(this.ellipse && tx*tx+ty*ty>1+1e-9) continue;
+        rays.push(makeRay(tx,ty));
+      }
+    }
+    return rays.length ? rays : null;
+  }
+
+  scatterRay(ray){
+    if(!this.back) return null;
+    const ipt=this.pl.intersectionWith(ray.seg);
+    if(!ipt||ipt.t1<SENSITIVITY) return null;
+    const ret=new OTRay({startpoint:ray.startpoint,
+      direct_vector:ray.direct_vector.unit().mul(ipt.t1*ray.direct_vector.mag()),ray:false},
+      ray.wavelength,ray.index);
+    const p=this.pl.cross.unit();
+    if(ray.direct_vector.dot(p)<0){
+      const nr=new OTRay({startpoint:ipt.pt,direct_vector:ray.direct_vector,ray:true},
+        ray.wavelength,ray.index);
+      nr.parentRay=ray;
+      return{returnRay:ret,t1:ipt.t1,newRays:[nr]};
+    }
+    return{returnRay:ret,t1:ipt.t1,newRays:[]};
+  }
+
+  render(ctx,zg){
+    ctx.strokeStyle='#ff44cc'; ctx.lineWidth=2;
+    zg.renderPlane(ctx,this.pl.startpoint,this.pl.vector_1,this.pl.vector_2);
+    // Arrow + Q label
+    const mid=this.pl.midpoint3d();
+    const dir=this.pl.cross.unit().mul(8/zg.mag);
+    ctx.strokeStyle='#ff66dd'; ctx.lineWidth=1.5;
+    zg.line(ctx,mid,mid.add(dir));
+    const[sx,sy]=zg.worldToScreen(mid.add(this.pl.vector_1.unit().mul(this.pl.vector_1.mag()*0.5+6/zg.mag)));
+    ctx.fillStyle='#ff44cc'; ctx.font='12px monospace';
+    ctx.fillText('Q',sx,sy);
+  }
+
+  serialize(){
+    return`quiver opticnumber ${this.id} wavelength ${this.wavelength} length ${this.pl.vector_1.mag().toFixed(2)} nx ${this.nx} ny ${this.ny} span_x ${this.span_x} span_y ${this.span_y} pointsrc ${this.pointsrc} ellipse ${this.ellipse} laseron ${this.laseron} back ${this.back} mid ${this.pl.midpoint()} rot ${(this.pl.angleOf()*RAD2DEG).toFixed(2)} locked ${this.locked}`;
+  }
+}
+
+// ===== GEOMETRIC PRIMITIVES ON OTRay =====
+// These mirror Java Segment methods used by calcAberrationParms.
+
+// closestPointTo(ray2): find closest approach between two infinite rays.
+// Returns {p1, p2} — the closest points on ray1 and ray2 respectively.
+// Port of Java Segment.closestPointTo(Segment s, Point2D p1, Point2D p2).
+function rayClosestApproach(ray1, ray2){
+  const d1=ray1.direct_vector, d2=ray2.direct_vector;
+  const deltaX=ray2.startpoint.sub(ray1.startpoint);
+  const dotV=d2.dot(d1);
+  const m1=d1.mag2(), m2=d2.mag2();
+  const v1v2=m1*m2 - dotV*dotV;
+  if(Math.abs(v1v2)<1e-20){
+    // Parallel rays — p1=ray1.start, p2=closest point on ray2
+    const t2=deltaX.dot(d2)/m2;
+    return{p1:ray1.startpoint, p2:ray2.startpoint.add(d2.mul(t2))};
+  }
+  const t1=(deltaX.dot(d1)*m2 - deltaX.dot(d2)*dotV)/v1v2;
+  const t2=(deltaX.dot(d1)*dotV - deltaX.dot(d2)*m1)/v1v2;
+  return{
+    p1:ray1.startpoint.add(d1.mul(t1)),
+    p2:ray2.startpoint.add(d2.mul(t2))
+  };
+}
+
+// projectToPlane(ray, pointOnPlane, planeNormal): find where ray intersects
+// the plane through pointOnPlane with given normal.
+// Port of Java Segment.projectToPlane(Point2D pointOnPlane, Point2D planeNormal).
+function rayProjectToPlane(ray, pointOnPlane, planeNormal){
+  const bd=ray.direct_vector.dot(planeNormal);
+  if(Math.abs(bd)<1e-20) return null;
+  const t=pointOnPlane.sub(ray.startpoint).dot(planeNormal)/bd;
+  return ray.startpoint.add(ray.direct_vector.mul(t));
+}
+
+// calcPathClosest(ray, refPoint): OPL from source to the closest point on the
+// LAST segment of this ray to refPoint, plus all parent segment OPLs.
+// Port of Java Ray.calcPathClosest(Point2D gaussianImage).
+// Java: OPL of last segment = ±n * |refPoint - lastSeg.startpoint|
+//   (positive if refPoint is ahead of startpoint along the ray direction)
+// Then adds parent chain OPL like calcPathLength.
+function calcPathClosest(ray, refPoint){
+  const dif=refPoint.sub(ray.startpoint);
+  const ahead=dif.dot(ray.direct_vector)>0;
+  const lastSegOPL=ahead ? ray.index*dif.mag() : -ray.index*dif.mag();
+  // Add parent chain OPL (everything before this last segment)
+  let parentOPL=0;
+  let r=ray.parentRay;
+  while(r){
+    const d=(r.segmentLength!==undefined&&r.segmentLength!==null)
+             ? r.segmentLength : r.direct_vector.mag();
+    parentOPL+=d*r.index+(r.extralen||0);
+    r=r.parentRay;
+  }
+  return lastSegOPL+parentOPL+(ray.extralen||0);
+}
+
+// Full 3D port of Java calcGaussianParms + GaussianParms.findRadius.
+// Probes rays 0-4 at the reference plane to reconstruct the sagittal and
+// tangential ABCD matrices, then propagates the complex beam parameter q
+// through each to get beam width, radius of curvature, and waist parameters.
+function calcGaussianBeamParms(probeSegs, source){
+  const byIdx={};
+  for(const s of probeSegs) byIdx[s.ray.gaussianProbeIdx]=s;
+  if(!byIdx[0]||!byIdx[1]||!byIdx[2]||!byIdx[3]||!byIdx[4]) return null;
+
+  const ax1=source.axis1();
+  const ax2=source.axis2();
+  const da=source.delta_angle;
+  const dp=source.delta_pos;
+
+  const p0=byIdx[0].p2;
+  const d0=byIdx[0].ray.direct_vector;
+
+  // Position displacements relative to axial ray
+  const dp1=byIdx[1].p2.sub(p0);
+  const dp2=byIdx[2].p2.sub(p0);
+  const dp3=byIdx[3].p2.sub(p0);
+  const dp4=byIdx[4].p2.sub(p0);
+
+  const d1=byIdx[1].ray.direct_vector;
+  const d2=byIdx[2].ray.direct_vector;
+  const d3=byIdx[3].ray.direct_vector;
+  const d4=byIdx[4].ray.direct_vector;
+
+  // MagnitudeAlong: signed projection onto axis
+  const magAlong=(v,ax)=>v.dot(ax)/ax.mag();
+  // SlopeIn: (dir-refDir).magAlong(ax) / |refDir|
+  const slopeIn=(dir,ax)=>(dir.sub(d0).dot(ax)/ax.mag())/d0.mag();
+
+  // Sagittal ABCD (axis1 = depth/z direction)
+  const ah = magAlong(dp1,ax1)/dp;
+  const ch = slopeIn(d1,ax1)/dp;
+  const bh = magAlong(dp3,ax1)/da;
+  const dh = slopeIn(d3,ax1)/da;
+
+  // Tangential ABCD (axis2 = in-plane perpendicular to beam)
+  // Note: sign flip in Java for tangential (av = -magAlong...)
+  const av = -magAlong(dp2,ax2)/dp;
+  const cv = -slopeIn(d2,ax2)/dp;
+  const bv =  magAlong(dp4,ax2)/da;
+  const dv =  slopeIn(d4,ax2)/da;
+
+  const detH=ah*dh-bh*ch;
+  const detV=av*dv-bv*cv;
+  const index=byIdx[0].ray.index||1;
+
+  // Complex beam parameter propagation: q2 = (A*q1+B)/(C*q1+D)
+  const scalefactor=1e-6; // nm → mm
+  const lam=source.wavelength*scalefactor;
+
+  function findBeamParms(radiusc, beamwidth, A, B, C, D){
+    // 1/q = 1/R - i*λ/(π*w²)
+    const iq1r=1/radiusc;
+    const iq1i=-lam/(Math.PI*beamwidth*beamwidth);
+    const denom=iq1r*iq1r+iq1i*iq1i;
+    const q1r=iq1r/denom, q1i=-iq1i/denom;
+    // q2 = (A*q1+B)/(C*q1+D)
+    const numR=A*q1r+B, numI=A*q1i;
+    const denR=C*q1r+D, denI=C*q1i;
+    const denMag2=denR*denR+denI*denI;
+    if(denMag2<1e-30) return null;
+    const q2r=(numR*denR+numI*denI)/denMag2;
+    const q2i=(numI*denR-numR*denI)/denMag2;
+    // 1/q2
+    const q2Mag2=q2r*q2r+q2i*q2i;
+    if(q2Mag2<1e-30) return null;
+    const iq2r=q2r/q2Mag2, iq2i=-q2i/q2Mag2;
+    const R  = Math.abs(iq2r)>1e-15 ? 1/iq2r : 1e20;
+    const w  = Math.sqrt(Math.abs(lam/(index*Math.PI*iq2i)));
+    const z1 = Math.abs(iq2r)>1e-15
+               ? 1/(iq2r*(1+(iq2i*iq2i)/(iq2r*iq2r))) : 1e20;
+    const w0 = Math.abs(iq2r)>1e-15
+               ? w/Math.sqrt(1+(iq2r*iq2r)/(iq2i*iq2i)) : w;
+    return{R, w, z1, w0};
+  }
+
+  const sag=findBeamParms(source.radiusc_s, source.beamwidth_s, ah, bh, ch, dh);
+  const tan=findBeamParms(source.radiusc_t, source.beamwidth_t, av, bv, cv, dv);
+
+  return sag&&tan ? {ah,bh,ch,dh, av,bv,cv,dv, detH,detV, index, sag, tan} : null;
+}
+
+// ===== GVD PARAMETER CALCULATION =====
+// Direct port of Java Ray.calcGVDParms().
+// Probe rays 5-8 (gaussianProbeIdx 5,6,7,8) carry wavelengths:
+//   5: wv + 0.5*dwv,  6: wv - 0.5*dwv,  7: wv + dwv,  8: wv - dwv
+// All OPLs divided by speedoflight (3e-4 mm/fs) to give times in fs.
+const SPEED_OF_LIGHT_MM_FS = 3e-4;   // mm/fs
+const SPEED_OF_LIGHT_NM_FS = 3e2;    // nm/fs  (= c in nm/fs)
+
+function calcGVDParms(probeSegs, source) {
+  // Index by gaussianProbeIdx
+  const byIdx = {};
+  for (const s of probeSegs) byIdx[s.ray.gaussianProbeIdx] = s;
+
+  // Need axial ray (0) and the four GVD rays (5,6,7,8)
+  if (!byIdx[0] || !byIdx[5] || !byIdx[6] || !byIdx[7] || !byIdx[8]) return null;
+
+  const wv  = source.wavelength;            // nm
+  const dwv = source.delta_wv;              // nm
+
+  // calcPathLength for each ray (n*d + extralen along full parent chain)
+  function pathLength(ray) {
+    let len = 0, r = ray;
+    while (r) {
+      const d = (r.segmentLength !== undefined && r.segmentLength !== null)
+                ? r.segmentLength : r.direct_vector.mag();
+      len += d * r.index + (r.extralen || 0);
+      r = r.parentRay;
+    }
+    return len;
+  }
+
+  const d0 = pathLength(byIdx[0].ray) / SPEED_OF_LIGHT_MM_FS;  // fs, axial
+  const d1 = pathLength(byIdx[5].ray) / SPEED_OF_LIGHT_MM_FS;  // fs, wv+0.5*dwv
+  const d2 = pathLength(byIdx[6].ray) / SPEED_OF_LIGHT_MM_FS;  // fs, wv-0.5*dwv
+  const d3 = pathLength(byIdx[7].ray) / SPEED_OF_LIGHT_MM_FS;  // fs, wv+dwv
+  const d4 = pathLength(byIdx[8].ray) / SPEED_OF_LIGHT_MM_FS;  // fs, wv-dwv
+
+  // r1.wavelength - r2.wavelength = (wv+0.5*dwv) - (wv-0.5*dwv) = dwv
+  const wv1 = wv + 0.5 * dwv;
+  const wv2 = wv - 0.5 * dwv;
+  const wv3 = wv + dwv;
+  const wv4 = wv - dwv;
+
+  const wavsq = wv * wv;
+  const wavcu = wavsq * wv;
+
+  // Group delay (fs): -λ * (d1-d2) / (wv1-wv2)
+  const gdelay = -wv * (d1 - d2) / (wv1 - wv2);
+
+  // Second derivative of time vs wavelength: (d1 - 2*d0 + d2) / (dwv/2)^2
+  const d2tl = (d1 - 2.0*d0 + d2) / ((wv1 - wv) * (wv - wv2));
+
+  // GVD in fs²: d2tl * λ³ / c_nm
+  const gvd = d2tl * wavcu / SPEED_OF_LIGHT_NM_FS;
+
+  // Frequency bandwidth for a transform-limited pulse (rad/fs per nm)
+  const delf = (wv1 - wv2) * SPEED_OF_LIGHT_NM_FS / (wv * wv);
+
+  // GVD delay (fs): 0.5 * GVD * delf
+  const gtot = 0.5 * gvd * delf;
+
+  // Third derivative: Java formula exactly
+  const d3tl = (d3 - 2.0*d1 + 2.0*d2 - d4) /
+               ((wv3 - wv1) * (wv1 - wv2) * (wv2 - wv4));
+
+  // TOD (fs³)
+  const tod = -(wavsq / (SPEED_OF_LIGHT_NM_FS * SPEED_OF_LIGHT_NM_FS)) *
+               (3.0 * wavsq * d2tl + wavcu * d3tl);
+
+  // TOD delay (fs)
+  const todtot = tod * delf * delf / 6.0;
+
+  // gvd0 in Java = d1 (TOF of the +0.5*dwv ray) — labelled "TOF"
+  const gvd0 = d1;
+
+  return { gvd0, gdelay, gvd, gtot, tod, todtot };
+}
+
+// ===== ABERRATION PARAMETER EXTRACTION =====
+// Port of Java Ray.calcAberrationParms(). Uses 14 probe rays from an AberrationSource
+// to extract Seidel aberration coefficients via finite differences of OPL.
+function calcAberrationParms(probeSegs, source){
+  // Index probe rays 0-13 by gaussianProbeIdx
+  const byIdx={};
+  for(const s of probeSegs) byIdx[s.ray.gaussianProbeIdx]=s;
+  for(let i=0;i<14;i++) if(!byIdx[i]) return null;
+
+  const da=source.delta_angle;
+  const dp=source.delta_pos;
+  const lda=da*source.large_dev_factor;
+  const ldp=dp*source.large_dev_factor;
+  const dw=source.delta_wv;
+
+  // The 14 terminal rays (their last traced segments)
+  const r=[];
+  for(let i=0;i<14;i++) r.push(byIdx[i].ray);
+
+  // Find Gaussian focus: closest approach of ray 0 (axial) and ray 3 (small angle)
+  const {p1:gF}=rayClosestApproach(r[0],r[3]);
+
+  // Find chromatic focus: closest approach of ray 11 (axial, wv+dw) and ray 12 (angled, wv+dw)
+  const {p1:cF}=rayClosestApproach(r[11],r[12]);
+
+  // Project axial ray onto planes at gF and at gF scaled by ldp/dp and 2*ldp/dp
+  const gFnear=rayProjectToPlane(r[1], gF, r[0].direct_vector);
+  if(!gFnear) return null;
+  const gFld1=gFnear.sub(gF).mul(ldp/dp).add(gF);
+  const gFld2=gFnear.sub(gF).mul(2*ldp/dp).add(gF);
+
+  // Compute OPLs to reference points (matching Java calcAberrationParms exactly)
+  const opd=new Array(14).fill(0);
+  opd[0]  = calcPathClosest(r[0],  gF);
+  opd[11] = calcPathClosest(r[11], cF);
+  opd[10] = calcPathClosest(r[10], gFld1);
+
+  const opdsub = calcPathClosest(r[1], gFnear) - opd[0]; // opd[2] in Java (index offset)
+  const opdsubLd = opdsub*(ldp*ldp)/(dp*dp);
+
+  opd[5]  = calcPathClosest(r[5],  gF)    - opd[0];
+  opd[13] = calcPathClosest(r[13], cF)    - opd[11];
+  opd[6]  = calcPathClosest(r[6],  gFld1) - opd[0] - opdsubLd;
+  opd[7]  = calcPathClosest(r[7],  gFld1) - opd[0] - opdsubLd;
+  opd[8]  = calcPathClosest(r[8],  gFld1) - opd[0] - opdsubLd;
+  opd[9]  = calcPathClosest(r[9],  gFld2) - opd[0] - 4*opdsubLd;
+  opd[10] = opd[10]                       - opd[0] - opdsubLd;
+
+  // pr1..pr7 matching Java variable names
+  const pr1=opd[5], pr2=opd[6], pr3=opd[7], pr4=opd[8];
+  const pr5=opd[9], pr6=opd[10], pr7=opd[13];
+
+  // Effective beam parameters at the exit pupil
+  const ax2=source.axis2();
+  // wda: effective large angle width (tangential direction)
+  const wda=r[4].direct_vector.sub(r[0].direct_vector).dot(ax2)/ax2.mag()/r[0].direct_vector.mag()*(lda/da);
+  // wdp: effective large position width
+  const gFnear2=rayProjectToPlane(r[2], gF, r[0].direct_vector);
+  if(!gFnear2) return null;
+  const wdp=gFnear2.sub(gF).mag()*(ldp/dp);
+
+  if(Math.abs(wda)<1e-15||Math.abs(wdp)<1e-15) return null;
+
+  // Seidel aberration coefficients (matching Java formulas exactly)
+  const spherical     = -4*pr1/(wda*wda*wda*wda);
+  const astigmatism   = -(-2*pr2+pr3+pr4)/(2*wda*wda*wdp*wdp);
+  const curvature     = 2*(pr1-pr2+pr6)/(wda*wda*wdp*wdp);
+  const distortion    = -(-3*pr1+3*pr3+pr4-pr5+12*pr6)/(6*wda*wdp*wdp*wdp);
+  const coma          = -(3*pr1-6*pr3+2*pr4+pr5-12*pr6)/(6*wda*wda*wda*wdp);
+  const defocus       = gF.sub(r[0].startpoint).mag() - r[0].direct_vector.mag();
+  const chromatic     = cF.sub(gF).dot(r[0].direct_vector)/(dw*r[0].direct_vector.mag());
+  const spherochrom   = -4*(pr7-pr1)/(wda*wda*wda*wda*dw);
+  const magnification = Math.abs(da/( r[4].direct_vector.sub(r[0].direct_vector).dot(ax2)/ax2.mag()/r[0].direct_vector.mag() ));
+
+  // Convert to waves for a given f/# and source size (matching AberrationParms constructor)
+  const wvMM=source.wavelength*1e-6;  // nm → mm
+  const fn=source.source_f_n*magnification;
+  const ss=source.source_size*magnification;
+  const spherical_waves     = -0.25*spherical/(fn*fn*fn*fn*wvMM);
+  const coma_waves          = coma*ss/(fn*fn*fn*wvMM);
+  const astigmatism_waves   = -astigmatism*ss*ss/(fn*fn*wvMM);
+  const distortion_waves    = distortion*ss*ss*ss/(fn*wvMM);
+  const curvature_waves     = -0.5*curvature*ss*ss/(fn*fn*wvMM);
+  const spherochrom_waves   = -0.25*spherochrom*dw/(fn*fn*fn*fn*wvMM);
+
+  return{
+    spherical, coma, astigmatism, distortion, curvature,
+    defocus, chromatic, spherochrom, magnification,
+    spherical_waves, coma_waves, astigmatism_waves,
+    distortion_waves, curvature_waves, spherochrom_waves,
+    gF, cF
+  };
+}
+
+// ===== LENS =====
+class Lens extends Optic {
+  constructor(mid,len=80){
+    super();
+    const dir=new Vec3(0,len,0);
+    this.pl=Plane.fromCenterDir(mid,dir,true,true);
+    this.nfl1=100;this.nfl2=100;this.centerwv=560;
+    this.do1=0;this.do2=0;
+    this.reflect=false;this.astig=false;
+  }
+  focal(wv){return 1/((1/this.nfl1)+(wv-this.centerwv)*this.do1)}
+  focal2(wv){return 1/((1/this.nfl2)+(wv-this.centerwv)*this.do2)}
+  getPosition(){return this.pl.midpoint()}
+  move(p){if(!this.locked)this.pl.moveCenterTo(p)}
+  rotate(ang){if(!this.locked)this.pl.rotateCenterTo(ang/RAD2DEG)}
+  getFields(){return[
+    {key:'length',label:'Length mm',type:'n'},
+    {key:'thickness',label:'Thickness mm',type:'n'},
+    {key:'nfl1',label:'Focal length mm',type:'n'},
+    {key:'centerwv',label:'Center wv nm',type:'n'},
+    {key:'do1',label:'Dispersion (diopters/nm)',type:'n'},
+    {key:'reflect',label:'Mirror mode?',type:'b'},
+    {key:'astig',label:'Astigmatic?',type:'b'},
+    {key:'nfl2',label:'Focal length 2 mm',type:'n'},
+    {key:'do2',label:'Dispersion 2',type:'n'},
+    {key:'mid',label:'Position',type:'p'},
+    {key:'rot',label:'Angle°',type:'n'},
+    {key:'locked',label:'Locked?',type:'b'},
+  ]}
+  getFieldValue(k){
+    if(k==='length')return this.pl.vector_1.mag().toFixed(2);
+    if(k==='thickness')return this.pl.vector_2.mag().toFixed(2);
+    if(k==='mid')return this.pl.midpoint().toString();
+    if(k==='rot')return(this.pl.angleOf()*RAD2DEG).toFixed(2);
+    if(['nfl1','nfl2','centerwv','do1','do2'].includes(k))return this[k];
+    if(['reflect','astig','locked'].includes(k))return this[k];
+    return null;
+  }
+  setFieldValue(k,v){
+    if(k==='length'&&+v>0){const d=+v,mid=this.pl.midpoint();this.pl=new Plane(mid.sub(this.pl.vector_1.unit().mul(d*0.5)).sub(this.pl.vector_2.unit().mul(this.pl.vector_2.mag()*0.5)),this.pl.vector_1.unit().mul(d),this.pl.vector_2,true,true);}
+    else if(k==='thickness'&&+v>0){
+      const d=+v,mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.mul(0.5)).sub(this.pl.vector_2.unit().mul(d*0.5)),
+        this.pl.vector_1, this.pl.vector_2.unit().mul(d), true, true);
+    }
+    else if(['nfl1','nfl2','centerwv','do1','do2'].includes(k))this[k]=+v;
+    else if(['reflect','astig'].includes(k))this[k]=(v==='true'||v===true);
+    else if(k==='locked')this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{this.pl.moveCenterTo(Vec3.fromString(v))}catch(e){}}
+    else if(k==='rot')this.pl.rotateCenterTo(+v/RAD2DEG);
+  }
+  scatterRay(ray){
+    const ipt=this.pl.intersectionWith(ray.seg);
+    if(!ipt||ipt.t1<SENSITIVITY)return null;
+    const ret=new OTRay({startpoint:ray.startpoint,direct_vector:ray.direct_vector.unit().mul(ipt.t1*ray.direct_vector.mag()),ray:false},ray.wavelength,ray.index);
+
+    const perp=this.pl.cross.unit();
+    const inout=ray.direct_vector.dot(perp)>0;
+    const flen=this.focal(ray.wavelength)*2;
+
+    // Fresnel thin-lens OPL correction (matches Java Lens.ScatterRays extralen).
+    // difpt = hit point relative to lens centre, in the aperture plane.
+    const difpt=ipt.pt.sub(this.pl.midpoint3d());
+    const difpt2d=difpt.sub(perp.mul(difpt.dot(perp))); // component in lens plane
+    const r2hit=difpt2d.mag2();
+    let extralen=0;
+    if(!this.astig){
+      if(Math.abs(flen)>1e-9){
+        if(flen<0){
+          extralen=-r2hit/flen;
+        } else {
+          const r2max=0.25*this.pl.vector_1.add(this.pl.vector_2).mag2();
+          extralen=(r2max-r2hit)/flen;
+        }
+      }
+    } else {
+      const flen2=this.focal2(ray.wavelength)*2;
+      const d1=difpt.dot(this.pl.vector_1)/this.pl.vector_1.mag2();
+      const d2=difpt.dot(this.pl.vector_2)/this.pl.vector_2.mag2();
+      if(Math.abs(flen)>1e-9&&Math.abs(flen2)>1e-9){
+        extralen=(0.25*this.pl.vector_1.mag2()/Math.abs(flen)-d1*d1/flen)
+                +(0.25*this.pl.vector_2.mag2()/Math.abs(flen2)-d2*d2/flen2);
+      }
+    }
+    ret.extralen=extralen;  // set on returnRay (the segment arriving at the lens)
+
+    let newDir;
+    if(!this.astig){
+      // p1 = direction from lens midpoint toward focal point (perpendicularBisector direction)
+      // For transmission: focal point is flen ahead in the direction of travel
+      // For reflection: focal point is on the same side as the incoming ray
+      const focalDir=perp.mul(this.reflect ? flen : (inout ? flen : -flen));
+      // p1 = (focalDir + difpt).unit() — the "shifted" focal direction for this hit point
+      // This correctly accounts for off-axis rays: the effective focal point shifts
+      // by difpt (the lateral offset of the hit from the lens centre).
+      let p1=focalDir.add(difpt).unit();
+
+      // Reflect incoming ray direction about p1 (first reflection)
+      const d_in=ray.direct_vector;
+      let d=d_in.sub(p1.mul(d_in.dot(p1)*2));
+
+      if(!this.reflect){
+        // Second reflection about the lens normal — flips ray through the lens
+        const pn=perp;
+        d=d.sub(pn.mul(d.dot(pn)*2));
+      }
+      newDir=d;
+    } else {
+      // Astigmatic lens: separate focal lengths along vector_1 and vector_2 axes
+      const flen2=this.focal2(ray.wavelength)*2;
+      const d1=difpt.dot(this.pl.vector_1)/this.pl.vector_1.mag2();
+      const d2=difpt.dot(this.pl.vector_2)/this.pl.vector_2.mag2();
+      const focalSign=this.reflect?1:(inout?1:-1);
+      // p1: perp direction + fractional shift along each axis
+      let p1=perp.mul(focalSign)
+        .add(this.pl.vector_1.mul(d1/flen))
+        .add(this.pl.vector_2.mul(d2/flen2))
+        .unit();
+      const d_in=ray.direct_vector;
+      let d=d_in.sub(p1.mul(d_in.dot(p1)*2));
+      if(!this.reflect){
+        const pn=perp;
+        d=d.sub(pn.mul(d.dot(pn)*2));
+      }
+      newDir=d;
+    }
+
+    const newRay=new OTRay({startpoint:ipt.pt,direct_vector:newDir,ray:true},ray.wavelength,ray.index);
+    newRay.parentRay=ray;
+    return{returnRay:ret,t1:ipt.t1,newRays:[newRay]};
+  }
+  render(ctx,zg){
+    const mid2d=this.pl.midpoint();  // z=0, the correct display position
+    const half=this.pl.vector_1.mul(0.5);
+    const p1=mid2d.sub(half);
+    const p2=mid2d.add(half);
+    const halfLen=this.pl.vector_1.mag()*0.5;
+    const perp=this.pl.cross.unit();
+    const f=this.nfl1;
+
+    ctx.strokeStyle=this.reflect?'#88aaff':'#ffffff';
+    ctx.lineWidth=1.5;
+
+    if(this.reflect){
+      const sag=Math.min(Math.abs(halfLen*halfLen/(2*f)),halfLen*0.6)*(f>0?1:-1);
+      _drawBowedLine(ctx,zg,p1,p2,perp,sag);
+      ctx.strokeStyle='#334466';ctx.lineWidth=1;
+      const n=this.pl.vector_1.unit();
+      const back=perp.mul(-6/zg.mag);
+      const step=Math.max(this.pl.vector_1.mag()/8,5/zg.mag);
+      for(let d=0;d<=this.pl.vector_1.mag();d+=step){
+        const bp=p1.add(n.mul(d));
+        zg.line(ctx,bp,bp.add(back));
+      }
+    } else {
+      const sag=Math.min(Math.abs(halfLen*halfLen/f),halfLen*0.55)*(f>0?1:-1);
+      ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;
+      _drawBowedLine(ctx,zg,p1,p2,perp, sag);
+      _drawBowedLine(ctx,zg,p1,p2,perp,-sag);
+      ctx.strokeStyle='#44ffaa';ctx.lineWidth=1.5;
+      const tipLen=8/zg.mag;
+      // Arrow tips at each end, pointing inward/outward along the lens body (z=0 plane)
+      // Use a point one tipLen inset from each end along vector_1, not midpoint3d
+      const v1u=this.pl.vector_1.unit();
+      const p1in=p1.add(v1u.mul(tipLen));   // inset from p1 end
+      const p2in=p2.sub(v1u.mul(tipLen));   // inset from p2 end
+      if(f>0){
+        _arrowTip(ctx,zg,p1,p1in,tipLen);
+        _arrowTip(ctx,zg,p2,p2in,tipLen);
+      } else {
+        _arrowTip(ctx,zg,p1in,p1,tipLen);
+        _arrowTip(ctx,zg,p2in,p2,tipLen);
+      }
+    }
+    // Draw depth edges centred on z=0 (from -depth/2 to +depth/2)
+    ctx.strokeStyle='rgba(150,150,200,0.35)';ctx.lineWidth=1;
+    const v2=this.pl.vector_2;
+    const v2half=v2.mul(0.5);
+    zg.line(ctx,p1.sub(v2half),p1.add(v2half));
+    zg.line(ctx,p2.sub(v2half),p2.add(v2half));
+  }
+  serialize(){return`lens${super.serialize()}`}
+}
+
+// Helper: draw a line bowed outward from p1→p2 by `sag` in the `perpDir` direction
+// Uses a quadratic bezier through the midpoint offset by sag
+function _drawBowedLine(ctx,zg,p1,p2,perpDir,sag){
+  const [x1,y1]=zg.worldToScreen(p1);
+  const [x2,y2]=zg.worldToScreen(p2);
+  // Control point: midpoint of p1→p2 pushed out by sag (in world coords → screen)
+  const midW=p1.add(p2).mul(0.5).add(perpDir.mul(sag));
+  const [cx,cy]=zg.worldToScreen(midW);
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.quadraticCurveTo(cx,cy,x2,y2);
+  ctx.stroke();
+}
+
+// Helper: draw a small arrowhead pointing from `from` toward `to`
+function _arrowTip(ctx,zg,from,to,size){
+  const dir=to.sub(from).unit();
+  const perp=new Vec3(-dir.y,dir.x,0).mul(size*0.5);
+  const base=to.sub(dir.mul(size));
+  zg.line(ctx,to,base.add(perp));
+  zg.line(ctx,to,base.sub(perp));
+}
+
+// ===== FLAT (mirror/plate) =====
+class Flat extends Optic {
+  constructor(mid,len=80){
+    super();
+    const dir=new Vec3(0,len,0);
+    this.pl=Plane.fromCenterDir(mid,dir,true,true);
+    this.plate=false;this.reflect=true;this.refx=false;this.refy=false;
+  }
+  getPosition(){return this.pl.midpoint()}
+  move(p){if(!this.locked)this.pl.moveCenterTo(p)}
+  rotate(ang){if(!this.locked)this.pl.rotateCenterTo(ang/RAD2DEG)}
+  getFields(){return[
+    {key:'length',label:'Length mm',type:'n'},
+    {key:'thickness',label:'Thickness mm',type:'n'},
+    {key:'plate',label:'Transparent?',type:'b'},
+    {key:'reflect',label:'Reflect?',type:'b'},
+    {key:'refx',label:'Reflect X?',type:'b'},
+    {key:'refy',label:'Reflect Y?',type:'b'},
+    {key:'mid',label:'Position',type:'p'},
+    {key:'rot',label:'Angle°',type:'n'},
+    {key:'locked',label:'Locked?',type:'b'},
+  ]}
+  getFieldValue(k){
+    if(k==='length')return this.pl.vector_1.mag().toFixed(2);
+    if(k==='thickness')return this.pl.vector_2.mag().toFixed(2);
+    if(k==='mid')return this.pl.midpoint().toString();
+    if(k==='rot')return(this.pl.angleOf()*RAD2DEG).toFixed(2);
+    if(['plate','reflect','refx','refy','locked'].includes(k))return this[k];
+    return null;
+  }
+  setFieldValue(k,v){
+    if(k==='length'&&+v>0){
+      const d=+v, mid=this.pl.midpoint();
+      // Preserve existing vector_2 (thickness) — don't use fromCenterDir which would reset it
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.unit().mul(d*0.5)).sub(this.pl.vector_2.mul(0.5)),
+        this.pl.vector_1.unit().mul(d), this.pl.vector_2, true, true);
+    }
+    else if(k==='thickness'&&+v>0){
+      const d=+v, mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.mul(0.5)).sub(new Vec3(0,0,d*0.5)),
+        this.pl.vector_1, new Vec3(0,0,d), true, true);
+    }
+    else if(['plate','reflect','refx','refy'].includes(k))this[k]=(v==='true'||v===true);
+    else if(k==='locked')this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{this.pl.moveCenterTo(Vec3.fromString(v))}catch(e){}}
+    else if(k==='rot')this.pl.rotateCenterTo(+v/RAD2DEG);
+  }
+  scatterRay(ray){
+    const ipt=this.pl.intersectionWith(ray.seg);
+    if(!ipt||ipt.t1<SENSITIVITY)return null;
+    const ret=new OTRay({startpoint:ray.startpoint,direct_vector:ray.direct_vector.unit().mul(ipt.t1*ray.direct_vector.mag()),ray:false},ray.wavelength,ray.index);
+    let d=ray.direct_vector;
+    let its=ipt.pt;
+    const newRays=[];
+
+    // refx: reflect direction and hit-point about vector_1 (the flat's body axis)
+    if(this.refx){
+      const p=this.pl.vector_1.unit();
+      d=d.sub(p.mul(d.dot(p)*2));
+      its=its.sub(p.mul(its.sub(this.pl.midpoint3d()).dot(p)*2));
+    }
+    // refy: reflect about vector_2 (depth axis — no-op in 2D since z=0, but kept for completeness)
+    if(this.refy){
+      const p=this.pl.vector_2.unit();
+      d=d.sub(p.mul(d.dot(p)*2));
+      its=its.sub(p.mul(its.sub(this.pl.midpoint3d()).dot(p)*2));
+    }
+
+    // plate=true: transparent, passes straight through (possibly after refx/refy)
+    if(this.plate){
+      const nr=new OTRay({startpoint:its,direct_vector:d,ray:true},ray.wavelength,ray.index);
+      nr.parentRay=ray;
+      newRays.push(nr);
+    }
+    // reflect=true: mirror reflection about the flat's normal
+    if(this.reflect){
+      let p=this.pl.cross.unit();
+      if(d.dot(p)>0)p=p.mul(-1);
+      const rd=d.sub(p.mul(d.dot(p)*2));
+      const nr=new OTRay({startpoint:its,direct_vector:rd,ray:true},ray.wavelength,ray.index);
+      nr.parentRay=ray;
+      newRays.push(nr);
+    }
+    // If neither plate nor reflect: flat blocks the ray (return result with no new rays)
+    return{returnRay:ret,t1:ipt.t1,newRays};
+  }
+  render(ctx,zg){
+    ctx.strokeStyle=this.reflect?(this.plate?'#888888':'#ffffff'):(this.plate?'#ffffff':'#ff6644');
+    ctx.lineWidth=2;
+    zg.renderPlane(ctx,this.pl.startpoint,this.pl.vector_1,this.pl.vector_2);
+    // hatch marks for mirror
+    if(this.reflect){
+      ctx.strokeStyle='#444466';
+      ctx.lineWidth=1;
+      const n=this.pl.vector_1.unit();
+      const perp=this.pl.cross.unit().mul(6/zg.mag);
+      const len=this.pl.vector_1.mag();
+      const step=Math.max(len/8,5/zg.mag);
+      for(let d=0;d<=len;d+=step){
+        const p=this.pl.startpoint.add(n.mul(d));
+        zg.line(ctx,p,p.add(perp));
+      }
+    }
+  }
+  serialize(){return`flat${super.serialize()}`}
+}
+
+// ===== PRISM =====
+class Prism extends Optic {
+  constructor(p1,p2,p3){
+    super();
+    const depth=(p2?p2.sub(p1).mag():80);
+    const pts=p3?[p1,p2,p3]:[
+      new Vec3(p1.x-50,p1.y+40),new Vec3(p1.x+50,p1.y+40),new Vec3(p1.x,p1.y-40)
+    ];
+    this.planes=[];
+    this.depth=depth;
+    this.size=100;
+    this.ma=new Material();
+    this.reflect=false;
+    this.locked=false;
+    this._buildFromPts(pts,depth);
+  }
+  _buildFromPts(pts,depth){
+    const d1=new Vec3(0,0,depth);
+    this.planes=[];
+    // Build one plane per edge of the polygon.
+    // The plane's vector_1 runs along the edge from pts[i] to pts[i+1].
+    // The plane's startpoint is the corner vertex (pts[i]), offset back in z by half depth.
+    const n=pts.length;
+    for(let i=0;i<n;i++){
+      const a=pts[i];
+      const b=pts[(i+1)%n];
+      const edge=b.sub(a);
+      // startpoint: corner a, shifted back half-depth in z
+      const sp=new Vec3(a.x,a.y,a.z-0.5*depth);
+      this.planes.push(new Plane(sp,edge,d1,true,true));
+    }
+    this.depth=depth;
+  }
+  midpoint(){
+    let d=new Vec3();
+    for(const pl of this.planes)d=d.add(pl.midpoint());
+    return d.mul(1/this.planes.length);
+  }
+  getPosition(){return this.midpoint()}
+  move(p){
+    if(this.locked)return;
+    const d=p.sub(this.midpoint());
+    for(const pl of this.planes)pl.displaceVector(d);
+  }
+  rotate(ang){
+    if(this.locked)return;
+    ang/=RAD2DEG;
+    const mid=this.midpoint();
+    const cur=this.planes[0].angleOf();
+    const m=ang-cur;
+    for(const pl of this.planes)pl.rotateAboutPoint(mid,m);
+  }
+  getFields(){return[
+    {key:'material',label:'Material',type:'s'},
+    {key:'size',label:'Size mm',type:'n'},
+    {key:'depth',label:'Depth mm',type:'n'},
+    {key:'reflect',label:'Reflect?',type:'b'},
+    {key:'mid',label:'Position',type:'p'},
+    {key:'rot',label:'Angle°',type:'n'},
+    {key:'vertices',label:'Vertices (x,y pairs relative to centre)',type:'s'},
+    {key:'locked',label:'Locked?',type:'b'},
+  ]}
+  // Sort vertices in CLOCKWISE order so face normals (cross = edge x depth) point INWARD.
+  // Java gives vertices CW, giving inward normals. With inward normals and materialfrom=null,
+  // refract() correctly identifies entry (inout>0: air→glass) and exit (inout<0: glass→air).
+  _sortInCircle(pts){
+    const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length;
+    const cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
+    // Sort CW: descending atan2 (negative of CCW)
+    return [...pts].sort((a,b)=>Math.atan2(b.y-cy,b.x-cx)-Math.atan2(a.y-cy,a.x-cx));
+  }
+  getFieldValue(k){
+    if(k==='material')return this.ma.toString();
+    if(k==='size')return this.size;
+    if(k==='depth')return this.depth;
+    if(k==='reflect')return this.reflect;
+    if(k==='mid')return this.midpoint().toString();
+    if(k==='rot'){
+      // Derive angle from first face's vector_1, matching Java pl.angleOf()*RAD2DEG
+      if(this.planes.length<1) return 0;
+      const v1=this.planes[0].vector_1;
+      return (Math.atan2(v1.y,v1.x)*RAD2DEG).toFixed(2);
+    }
+    if(k==='locked')return this.locked;
+    if(k==='vertices'){
+      // Return vertices relative to centroid, sorted in circular order, matching Java
+      const mid=this.midpoint();
+      // Extract one corner per plane (startpoint + v2/2 gives the front-face corner)
+      const pts=this.planes.map(pl=>{
+        const corner=pl.startpoint.add(pl.vector_2.mul(0.5));
+        return new Vec3(corner.x-mid.x, corner.y-mid.y);
+      });
+      const sorted=this._sortInCircle(pts);
+      return sorted.map(p=>`${p.x.toFixed(3)},${p.y.toFixed(3)}`).join(' ');
+    }
+    return null;
+  }
+  setFieldValue(k,v){
+    if(k==='material')this.ma=new Material(v);
+    else if(k==='reflect')this.reflect=(v==='true'||v===true);
+    else if(k==='locked')this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{this.move(Vec3.fromString(v))}catch(e){}}
+    else if(k==='size'&&+v>=10)this.size=+v;
+    else if(k==='depth'&&+v>0)this.depth=+v;
+    else if(k==='vertices'){
+      try{
+        // Formats supported:
+        //   Java dat: x,y_x,y_x,y  (underscores between pairs, values relative to centroid)
+        //   Builtin:  (x,y),(x,y)  (parens, values relative to centroid)
+        //   Manual:   x,y x,y x,y  (spaces between pairs)
+        // Strip parens, replace underscores with spaces, then parse x,y pairs
+        const cleaned=v.trim().replace(/[()]/g,'').replace(/_/g,' ');
+        const parts=cleaned.split(/[\s,]+/).filter(s=>s.length>0);
+        const raw=[];
+        for(let i=0;i+1<parts.length;i+=2) raw.push(new Vec3(+parts[i],+parts[i+1]));
+        if(raw.length>=3){
+          const mid=this.midpoint();
+          // Input coords are relative to centroid — translate to current midpoint
+          const cx=raw.reduce((s,p)=>s+p.x,0)/raw.length;
+          const cy=raw.reduce((s,p)=>s+p.y,0)/raw.length;
+          const centred=raw.map(p=>new Vec3(p.x-cx,p.y-cy));
+          const sorted=this._sortInCircle(centred);
+          const translated=sorted.map(p=>new Vec3(p.x+mid.x,p.y+mid.y));
+          this._buildFromPts(translated,this.depth);
+        }
+      }catch(e){}
+    }
+    else if(k==='rot'){
+      if(this.locked||this.planes.length<1) return;
+      const angRad=+v/RAD2DEG;
+      const mid=this.midpoint();
+      // Current angle from first face vector_1
+      const v1=this.planes[0].vector_1;
+      const curAng=Math.atan2(v1.y,v1.x);
+      const delta=angRad-curAng;
+      // Rotate all planes about the prism midpoint by delta
+      for(const pl of this.planes) pl.rotateAboutPoint(mid,delta);
+    }
+  }
+  scatterRay(ray){
+    const skipIdx=(ray.lastOptic===this)?ray.lastSurface:-1;
+    let bestIpt=null,bestPl=null,bestIdx=-1;
+    for(let i=0;i<this.planes.length;i++){
+      if(i===skipIdx)continue;  // skip the face this ray just came from
+      const ipt=this.planes[i].intersectionWith(ray.seg);
+      if(ipt&&ipt.t1>SENSITIVITY&&(!bestIpt||ipt.t1<bestIpt.t1)){
+        bestIpt=ipt;bestPl=this.planes[i];bestIdx=i;
+      }
+    }
+    if(!bestIpt)return null;
+    const ret=new OTRay({startpoint:ray.startpoint,direct_vector:ray.direct_vector.unit().mul(bestIpt.t1*ray.direct_vector.mag()),ray:false},ray.wavelength,ray.index);
+    // Pass null for materialfrom (matching Java Prism.ScatterRays).
+    // With inward-pointing face normals (CW vertex winding):
+    //   entry ray: dir·normal > 0 → frommat=null(air), tomat=glass ✓
+    //   exit ray:  dir·normal < 0 → frommat=glass, tomat=null(air) ✓
+    const newRays=this.ma.refract(bestPl.perpendicular(),bestIpt.pt,ray,bestPl,this.reflect,null);
+    return{returnRay:ret,t1:bestIpt.t1,newRays,surfaceIdx:bestIdx};
+  }
+  render(ctx,zg){
+    ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;
+    // Draw front face edges (at z=0, which is pl.startpoint.z since startpoint is offset back by v2/2)
+    for(const pl of this.planes){
+      zg.line(ctx,pl.startpoint,pl.startpoint.add(pl.vector_1));
+    }
+    // Draw back face edges (at z=depth, offset by vector_2)
+    ctx.strokeStyle='rgba(200,200,200,0.3)';ctx.lineWidth=1;
+    for(const pl of this.planes){
+      const p1b=pl.startpoint.add(pl.vector_2);
+      zg.line(ctx,p1b,p1b.add(pl.vector_1));
+    }
+    // Draw depth edges at corners
+    for(const pl of this.planes){
+      zg.line(ctx,pl.startpoint,pl.startpoint.add(pl.vector_2));
+    }
+  }
+  serialize(){
+    const mid=this.midpoint();
+    // Vertices relative to centroid, sorted in circle, spaces replaced with underscores
+    // to match Java's Optic.toString() which does .replace(' ','_') on field values
+    const pts=this.planes.map(pl=>{
+      const corner=pl.startpoint.add(pl.vector_2.mul(0.5));
+      return new Vec3(corner.x-mid.x, corner.y-mid.y);
+    });
+    const sorted=this._sortInCircle(pts);
+    const vertsStr=sorted.map(p=>`${p.x.toFixed(3)},${p.y.toFixed(3)}`).join('_');
+    return `prism opticnumber ${this.id} material ${this.ma.toString().replace(/ /g,'_')} size ${this.size} depth ${this.depth} reflect ${this.reflect} mid ${this.midpoint().toString()} vertices ${vertsStr} locked ${this.locked}`;
+  }
+}
+
+// ===== GRATING =====
+class Grating extends Optic {
+  constructor(mid,len=60){
+    super();
+    const dir=new Vec3(0,len,0);
+    this.pl=Plane.fromCenterDir(mid,dir,true,true);
+    this.sfreq=600;this.schirp=0;this.orderleft=1;this.orderright=1;this.trans=false;
+  }
+  getPosition(){return this.pl.midpoint()}
+  move(p){if(!this.locked)this.pl.moveCenterTo(p)}
+  rotate(ang){if(!this.locked)this.pl.rotateCenterTo(ang/RAD2DEG)}
+  getFields(){return[
+    {key:'length',label:'Length mm',type:'n'},
+    {key:'thickness',label:'Thickness mm',type:'n'},
+    {key:'sfreq',label:'Freq (lp/mm)',type:'n'},
+    {key:'schirp',label:'Chirp (lp/mm/mm)',type:'n'},
+    {key:'trans',label:'Transmission?',type:'b'},
+    {key:'mid',label:'Position',type:'p'},
+    {key:'rot',label:'Angle°',type:'n'},
+    {key:'orderleft',label:'Min order',type:'n'},
+    {key:'orderright',label:'Max order',type:'n'},
+    {key:'locked',label:'Locked?',type:'b'},
+  ]}
+  getFieldValue(k){
+    if(k==='length')return this.pl.vector_1.mag().toFixed(2);
+    if(k==='thickness')return this.pl.vector_2.mag().toFixed(2);
+    if(k==='mid')return this.pl.midpoint().toString();
+    if(k==='rot')return(this.pl.angleOf()*RAD2DEG).toFixed(2);
+    if(['sfreq','schirp','orderleft','orderright'].includes(k))return this[k];
+    if(['trans','locked'].includes(k))return this[k];
+    return null;
+  }
+  setFieldValue(k,v){
+    if(k==='length'&&+v>0){const d=+v,mid=this.pl.midpoint();this.pl=new Plane(mid.sub(this.pl.vector_1.unit().mul(d*0.5)).sub(this.pl.vector_2.unit().mul(this.pl.vector_2.mag()*0.5)),this.pl.vector_1.unit().mul(d),this.pl.vector_2,true,true);}
+    else if(k==='thickness'&&+v>0){
+      const d=+v,mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.mul(0.5)).sub(this.pl.vector_2.unit().mul(d*0.5)),
+        this.pl.vector_1, this.pl.vector_2.unit().mul(d), true, true);
+    }
+    else if(['sfreq','schirp'].includes(k))this[k]=+v;
+    else if(k==='orderleft'){const i=Math.round(+v);if(i>=-20&&i<20)this.orderleft=i}
+    else if(k==='orderright'){const i=Math.round(+v);if(i>=-20&&i<20)this.orderright=i}
+    else if(k==='trans')this.trans=(v==='true'||v===true);
+    else if(k==='locked')this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{this.pl.moveCenterTo(Vec3.fromString(v))}catch(e){}}
+    else if(k==='rot')this.pl.rotateCenterTo(+v/RAD2DEG);
+  }
+  scatterRay(ray){
+    const ipt=this.pl.intersectionWith(ray.seg);
+    if(!ipt||ipt.t1<SENSITIVITY)return null;
+    const ret=new OTRay({startpoint:ray.startpoint,direct_vector:ray.direct_vector.unit().mul(ipt.t1*ray.direct_vector.mag()),ray:false},ray.wavelength,ray.index);
+    let p=this.pl.cross.unit();
+    if(ray.direct_vector.dot(p)>0)p=p.mul(-1);
+    const pln=this.pl.vector_1.unit();
+    const preserve=ray.direct_vector.compIn(this.pl.vector_2);
+    const changeit=ray.direct_vector.sub(preserve);
+    const fromctr=ipt.pt.sub(this.pl.midpoint3d()).dot(pln);
+    const ppc=changeit.dot(pln);
+    const mag=changeit.mag();
+    const newRays=[];
+    const localfrq=1e-6*(this.sfreq+(fromctr*this.schirp));
+    for(let ord=this.orderleft;ord<=this.orderright;ord++){
+      const comp=ppc+(mag*ord*ray.wavelength*localfrq);
+      const pt2=mag*mag-comp*comp;
+      if(pt2>0){
+        const sqpt=Math.sqrt(pt2);
+        const d=(this.trans?p.mul(-sqpt):p.mul(sqpt)).add(pln.mul(comp)).add(preserve);
+        const nr=new OTRay({startpoint:ipt.pt,direct_vector:d,ray:true},ray.wavelength,ray.index);
+        nr.parentRay=ray;
+        // Treacy (1969) extra OPL: phase accumulated from grating periods between
+        // hit point and grating centre. Set on the diffracted ray (matching old Java).
+        nr.extralen=1e-6*(this.sfreq*fromctr+0.5*this.schirp*fromctr*fromctr)*ray.wavelength*ord;
+        newRays.push(nr);
+      }
+    }
+    return newRays.length?{returnRay:ret,t1:ipt.t1,newRays}:null;
+  }
+  render(ctx,zg){
+    ctx.strokeStyle='#cc44ff';ctx.lineWidth=2;
+    zg.renderPlane(ctx,this.pl.startpoint,this.pl.vector_1,this.pl.vector_2);
+    // hash marks to indicate grating
+    ctx.strokeStyle='#883399';ctx.lineWidth=1;
+    const n=this.pl.vector_1.unit();const perp=this.pl.cross.unit().mul(5/zg.mag);
+    const len=this.pl.vector_1.mag();const step=Math.max(len/12,4/zg.mag);
+    for(let d=0;d<=len;d+=step){
+      const p=this.pl.startpoint.add(n.mul(d));
+      zg.line(ctx,p,p.add(perp));
+    }
+  }
+  serialize(){return`grating${super.serialize()}`}
+}
+
+// ===== ABCD OPTIC — general 2x2 ray transfer matrix =====
+// Separate sagittal (h) and tangential (v) matrices, matching Java ABCD.java exactly.
+class ABCDOptic extends Optic {
+  constructor(mid, len=60){
+    super();
+    const dir=new Vec3(0,len,0);
+    this.pl=Plane.fromCenterDir(mid,dir,true,true);
+    // Identity matrices by default
+    this.ah=1;this.bh=0;this.ch=0;this.dh=1;
+    this.av=1;this.bv=0;this.cv=0;this.dv=1;
+    this.reflect=false;
+  }
+  getPosition(){return this.pl.midpoint()}
+  move(p){if(!this.locked)this.pl.moveCenterTo(p)}
+  rotate(ang){if(!this.locked)this.pl.rotateCenterTo(ang/RAD2DEG)}
+  getFields(){return[
+    {key:'length',   label:'Length mm',         type:'n'},
+    {key:'thickness',label:'Thickness mm',       type:'n'},
+    {key:'ah',       label:'Sagittal A',         type:'n'},
+    {key:'bh',       label:'Sagittal B (mm/rad)',type:'n'},
+    {key:'ch',       label:'Sagittal C (rad/mm)',type:'n'},
+    {key:'dh',       label:'Sagittal D',         type:'n'},
+    {key:'av',       label:'Tangential A',       type:'n'},
+    {key:'bv',       label:'Tangential B (mm/rad)',type:'n'},
+    {key:'cv',       label:'Tangential C (rad/mm)',type:'n'},
+    {key:'dv',       label:'Tangential D',       type:'n'},
+    {key:'reflect',  label:'Reflect?',           type:'b'},
+    {key:'mid',      label:'Midpoint',           type:'p'},
+    {key:'rot',      label:'Angle°',             type:'n'},
+    {key:'locked',   label:'Locked?',            type:'b'},
+  ]}
+  getFieldValue(k){
+    if(k==='length')   return this.pl.vector_1.mag().toFixed(2);
+    if(k==='thickness')return this.pl.vector_2.mag().toFixed(2);
+    if(k==='mid')      return this.pl.midpoint().toString();
+    if(k==='rot')      return(this.pl.angleOf()*RAD2DEG).toFixed(2);
+    if(['ah','bh','ch','dh','av','bv','cv','dv'].includes(k))return this[k];
+    if(['reflect','locked'].includes(k))return this[k];
+    return null;
+  }
+  setFieldValue(k,v){
+    if(k==='length'&&+v>0){
+      const d=+v,mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.unit().mul(d*0.5)).sub(this.pl.vector_2.unit().mul(this.pl.vector_2.mag()*0.5)),
+        this.pl.vector_1.unit().mul(d), this.pl.vector_2, true, true);
+    }
+    else if(k==='thickness'&&+v>0){
+      const d=+v,mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.mul(0.5)).sub(this.pl.vector_2.unit().mul(d*0.5)),
+        this.pl.vector_1, this.pl.vector_2.unit().mul(d), true, true);
+    }
+    else if(['ah','bh','ch','dh','av','bv','cv','dv'].includes(k))this[k]=+v;
+    else if(k==='reflect')this.reflect=(v==='true'||v===true);
+    else if(k==='locked') this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{this.pl.moveCenterTo(Vec3.fromString(v))}catch(e){}}
+    else if(k==='rot')this.pl.rotateCenterTo(+v/RAD2DEG);
+  }
+  scatterRay(ray){
+    const ipt=this.pl.intersectionWith(ray.seg);
+    if(!ipt||ipt.t1<SENSITIVITY)return null;
+
+    const ret=new OTRay(
+      {startpoint:ray.startpoint,
+       direct_vector:ray.direct_vector.unit().mul(ipt.t1*ray.direct_vector.mag()),
+       ray:false},
+      ray.wavelength, ray.index);
+
+    // Basis vectors of the optic plane
+    const p1=this.pl.vector_1.unit();   // sagittal axis (along body)
+    const p2=this.pl.vector_2.unit();   // tangential axis (depth)
+    // Component of incoming direction along the optical axis (cross direction)
+    const dirv1=ray.direct_vector.compIn(this.pl.cross);
+    const dr=dirv1.mag();               // speed along optical axis
+
+    // Hit point relative to lens centre
+    const mp=ipt.pt.sub(this.pl.midpoint3d());
+
+    // Decompose position and angle into sagittal and tangential components
+    const y1=mp.dot(p1);               // sagittal position
+    const y2=mp.dot(p2);               // tangential position
+    const t1=ray.direct_vector.dot(p1)/dr;  // sagittal angle (rad)
+    const t2=ray.direct_vector.dot(p2)/dr;  // tangential angle (rad)
+
+    // Apply ABCD matrix to each plane independently
+    const y1p=this.ah*y1+this.bh*t1;
+    const t1p=this.ch*y1+this.dh*t1;
+    const y2p=this.av*y2+this.bv*t2;
+    const t2p=this.cv*y2+this.dv*t2;
+
+    // New ray origin: centre + transformed lateral positions
+    const np=this.pl.midpoint3d().add(p1.mul(y1p)).add(p2.mul(y2p));
+
+    // New ray direction: axial component (possibly reflected) + transformed angles
+    const axial=this.reflect?dirv1.mul(-1):dirv1;
+    const nd=axial.add(p1.mul(t1p*dr)).add(p2.mul(t2p*dr));
+
+    // extralen: OPL correction from the ABCD transformation (matching Java)
+    // = 0.5*(C*y²/D) for each plane — the phase accumulated by the matrix element
+    let extralen=0;
+    if(Math.abs(this.dh)>1e-15) extralen+=0.5*this.ch*y1*y1/this.dh;
+    if(Math.abs(this.dv)>1e-15) extralen+=0.5*this.cv*y2*y2/this.dv;
+    ret.extralen=extralen;
+
+    const newRay=new OTRay({startpoint:np,direct_vector:nd,ray:true},ray.wavelength,ray.index);
+    newRay.parentRay=ray;
+    return{returnRay:ret,t1:ipt.t1,newRays:[newRay]};
+  }
+  render(ctx,zg){
+    ctx.strokeStyle='#ffee00';ctx.lineWidth=2;
+    zg.renderPlane(ctx,this.pl.startpoint,this.pl.vector_1,this.pl.vector_2);
+    ctx.strokeStyle='#aa9900';ctx.lineWidth=1;
+    const n=this.pl.vector_1.unit();
+    const perp=this.pl.cross.unit().mul(6/zg.mag);
+    const len=this.pl.vector_1.mag();
+    const step=Math.max(len/6,5/zg.mag);
+    for(let d=0;d<=len;d+=step){
+      const p=this.pl.startpoint.add(n.mul(d));
+      zg.line(ctx,p,p.add(perp));
+      zg.line(ctx,p,p.sub(perp));
+    }
+  }
+  serialize(){return`abcd${super.serialize()}`}
+}
+
+// A single curved surface: inherits plane geometry, adds offset/curvature/asphericity
+class CurvedSurface {
+  constructor(pl, offset, curv, asph){
+    // Copy reference plane geometry
+    this.startpoint = pl.startpoint;
+    this.vector_1   = pl.vector_1;
+    this.vector_2   = pl.vector_2;
+    this.cross      = pl.cross;
+    this.magvec1    = pl.magvec1;
+    this.magvec2    = pl.magvec2;
+    this.offset = offset;
+    this.curv   = curv;
+    this.asph   = asph;
+  }
+  // Re-derive geometry from a (possibly moved/rotated) reference plane
+  resetFrom(pl){
+    this.startpoint = pl.startpoint;
+    this.vector_1   = pl.vector_1;
+    this.vector_2   = pl.vector_2;
+    this.cross      = pl.cross;
+    this.magvec1    = pl.magvec1;
+    this.magvec2    = pl.magvec2;
+  }
+  // 2D midpoint — only along vector_1, z=0 (vector_2 is depth, not used in 2D)
+  midpoint(){
+    return new Vec3(
+      this.startpoint.x + this.vector_1.x*0.5,
+      this.startpoint.y + this.vector_1.y*0.5,
+      0
+    );
+  }
+  // Sag (axial height) as function of r²: z = r²/(R(1+√(1-(1+K)r²/R²)))
+  sagHeight(rsq){
+    const R=this.curv;
+    if(Math.abs(R)<1e-9) return this.offset;
+    const prek=1-(this.asph+1)*(rsq/(R*R));
+    if(prek<0) return this.offset-(rsq/R);
+    const onek=Math.sqrt(prek);
+    return this.offset-(rsq*(1/(1+onek))/R);
+  }
+  // Derivative of sag w.r.t. r² — used for Newton normal computation
+  sagDeriv(rsq){
+    const R=this.curv;
+    if(Math.abs(R)<1e-9) return 0;
+    const prek=1-(this.asph+1)*(rsq/(R*R));
+    if(prek<0) return -1/R;
+    const onek=Math.sqrt(prek);
+    const dbk=1/(1+onek);
+    return -(dbk/R)-(0.5*rsq*dbk*dbk*(this.asph+1))/(R*R*R*onek);
+  }
+  // Iterative Newton intersection with a ray segment
+  intersect(seg){
+    const midp=this.midpoint();  // surface centre, z=0
+    const uc=this.cross.unit();
+    let displn=new Vec3();
+    let t1=0, ht=this.offset;
+    let nm=uc;
+    let p=null;
+    for(let itr=0;itr<25;itr++){
+      const cp=midp.add(displn).add(uc.mul(ht));
+      const dotp=nm.dot(seg.direct_vector);
+      if(Math.abs(dotp)<1e-15)return null;
+      const t1n=(cp.sub(seg.startpoint).dot(nm))/dotp;
+      p=seg.startpoint.add(seg.direct_vector.mul(t1n));
+      // Full 3D lateral displacement perpendicular to optical axis
+      displn=p.sub(midp).subComp(uc);
+      // Sag is a function of total lateral distance r² = |displn|²
+      // For a spherical surface: x = r²/(R*(1+sqrt(1-(1+K)*r²/R²)))
+      // The surface normal in 3D is proportional to (-1, displn * dsag/dr²*2)
+      // i.e. the gradient includes ALL components of displn, not just XY.
+      // This is what gives sagittal focusing for out-of-plane rays.
+      const rsq=displn.mag2();
+      const dht=this.sagDeriv(rsq);
+      nm=uc.sub(displn.mul(2*dht));
+      ht=this.sagHeight(rsq);
+      if(Math.abs(t1-t1n)<1e-14)break;
+      t1=t1n;
+    }
+    // Aperture check: use XY-only lateral distance (the physical aperture is in the XY plane)
+    const displnXY=new Vec3(displn.x,displn.y,0);
+    const rsqXY=displnXY.mag2();
+    if(rsqXY>0.25*this.magvec1)return null;
+    if(t1<SENSITIVITY)return null;
+    if(!seg.ray&&t1>1)return null;
+
+    // Back-substitution: sag is still a function of full r² (3D)
+    const rsq=displn.mag2();
+    const axialP=p.sub(midp).dot(uc);
+    const sagAtP=this.sagHeight(rsq);
+    if(Math.abs(axialP-sagAtP)>0.1)return null;
+
+    // Reject if ray is nearly tangent to surface normal
+    const normalMag=nm.mag();
+    const dirMag=seg.direct_vector.mag();
+    if(normalMag<1e-10||dirMag<1e-10)return null;
+    const cosAngle=Math.abs(nm.dot(seg.direct_vector))/(normalMag*dirMag);
+    if(cosAngle<0.01)return null;
+
+    return {pt:p, normal:nm, t1};
+  }
+  parmToString(){
+    return`offset=${this.offset} curvature=${this.curv} asphericity=${this.asph}`;
+  }
+  parmFromString(s){
+    const tokens=s.replace(/_/g,' ').split(/[\s=]+/);
+    for(let i=0;i<tokens.length-1;i+=2){
+      const k=tokens[i],v=+tokens[i+1];
+      if(k==='offset')this.offset=v;
+      else if(k==='curvature')this.curv=v;
+      else if(k==='asphericity')this.asph=v;
+    }
+  }
+}
+
+class CurvedOptic extends Optic {
+  constructor(mid, len=60){
+    super();
+    const dir=new Vec3(0,len,0);
+    this.pl=Plane.fromCenterDir(mid,dir,true,true);
+    this.reflect=false;
+    this.detector=false;  // when true: absorb all rays (no refraction/reflection)
+    this.locked=false;
+    this.surfaces=[];  // array of {cs: CurvedSurface, ma: Material}
+    this._setNumSurfaces(2);
+    // Default: single refractive surface at offset=0, radius=100
+    this.surfaces[1].cs.curv=100;
+    this.surfaces[1].cs.offset=0;
+  }
+
+  _setNumSurfaces(n){
+    const old=this.surfaces||[];
+    const newArr=[];
+    for(let i=0;i<n;i++){
+      if(i<old.length && old[i]){
+        newArr.push(old[i]);
+      } else {
+        const cs=new CurvedSurface(this.pl, 0, 1e5, 0);
+        newArr.push({cs, ma:new Material()});
+      }
+    }
+    this.surfaces=newArr;
+    this._sortSurfaces();
+  }
+
+  _sortSurfaces(){
+    this.surfaces.sort((a,b)=>a.cs.offset-b.cs.offset);
+  }
+
+  _resetSurfaces(){
+    for(const s of this.surfaces) s.cs.resetFrom(this.pl);
+  }
+
+  getPosition(){return this.pl.midpoint();}  // z=0 guaranteed by Plane.midpoint()
+  postLoad(){
+    // After all fields deserialized: sort surfaces by offset and reset geometry
+    this._sortSurfaces();
+    this._resetSurfaces();
+  }
+
+  // Override deserialization to parse elm/material fields sequentially (in order),
+  // matching the original Java approach — simpler and immune to index shuffling.
+  static deserialize(line){
+    const op=new CurvedOptic(new Vec3(300,300));
+    const tokens=line.trim().split(/\s+/);
+    let i=1; // skip 'curved'
+
+    // First pass: find opticnumber and nel to size the surfaces array
+    for(let j=1;j<tokens.length-1;j+=2){
+      if(tokens[j]==='opticnumber'){op.id=+tokens[j+1];if(op.id>=opticSerial)opticSerial=op.id+1;}
+      else if(tokens[j]==='nel'){op._setNumSurfaces(Math.max(1,Math.min(10,Math.round(+tokens[j+1]))));}
+    }
+
+    // Second pass: all scalar fields (skip elm/material — handled sequentially below)
+    let elmIdx=0, matIdx=0;
+    for(let j=1;j<tokens.length-1;j+=2){
+      const k=tokens[j], v=tokens[j+1].replace(/_/g,' ');
+      if(k==='opticnumber'||k==='nel')continue;
+      if(k==='locked'){op.locked=(v==='true');continue;}
+      if(/^elm\d+$/.test(k)||/^material\d+$/.test(k))continue; // handled below
+      try{op.setFieldValue(k,v);}catch(e){}
+    }
+
+    // Third pass: elm and material fields in sequential order (elm0,mat0,elm1,mat1,...)
+    // This matches the original Java sequential parsing — no index arithmetic needed.
+    for(let j=1;j<tokens.length-1;j+=2){
+      const k=tokens[j], v=tokens[j+1].replace(/_/g,' ');
+      if(/^elm\d+$/.test(k)){
+        if(elmIdx<op.surfaces.length) op.surfaces[elmIdx].cs.parmFromString(v);
+        elmIdx++;
+      } else if(/^material\d+$/.test(k)){
+        if(matIdx<op.surfaces.length) op.surfaces[matIdx].ma=new Material(v);
+        matIdx++;
+      }
+    }
+
+    op.postLoad();
+    return op;
+  }
+  move(p){if(!this.locked){this.pl.moveCenterTo(p);this._resetSurfaces()}}
+  rotate(ang){if(!this.locked){this.pl.rotateCenterTo(ang/RAD2DEG);this._resetSurfaces()}}
+
+  getFields(){
+    const fields=[
+      {key:'nel',   label:'# Surfaces',type:'n'},
+      {key:'length',   label:'Length mm',    type:'n'},
+      {key:'thickness',label:'Thickness mm', type:'n'},
+      {key:'mid',      label:'Midpoint',     type:'p'},
+      {key:'rot',   label:'Angle°',     type:'n'},
+      {key:'reflect',  label:'Reflect?',  type:'b'},
+      {key:'detector', label:'Detector (absorb all rays)?', type:'b'},
+    ];
+    for(let i=0;i<this.surfaces.length;i++){
+      fields.push({key:`elm${i}`,      label:`Surface ${i+1} (offset_curv_asph)`, type:'s'});
+      if(i<this.surfaces.length-1)
+        fields.push({key:`material${i}`, label:`Material ${i+1}–${i+2}`, type:'s'});
+    }
+    fields.push({key:'locked',label:'Locked?',type:'b'});
+    return fields;
+  }
+
+  getFieldValue(k){
+    if(k==='nel')    return this.surfaces.length;
+    if(k==='length')    return this.pl.vector_1.mag().toFixed(2);
+    if(k==='thickness') return this.pl.vector_2.mag().toFixed(2);
+    if(k==='mid')       return this.pl.midpoint().toString();
+    if(k==='rot')       return(this.pl.angleOf()*RAD2DEG).toFixed(2);
+    if(k==='reflect')   return this.reflect;
+    if(k==='detector')  return this.detector;
+    if(k==='locked') return this.locked;
+    const elm=k.match(/^elm(\d+)$/);
+    if(elm){const i=+elm[1];if(i<this.surfaces.length)return this.surfaces[i].cs.parmToString();}
+    const mat=k.match(/^material(\d+)$/);
+    if(mat){const i=+mat[1];if(i<this.surfaces.length)return this.surfaces[i].ma.toString();}
+    return null;
+  }
+
+  setFieldValue(k,v){
+    if(k==='nel'){
+      const n=Math.max(1,Math.min(10,Math.round(+v)));
+      this._setNumSurfaces(n);
+      return;
+    }
+    if(k==='length'&&+v>0){
+      const d=+v, mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.unit().mul(d*0.5)).sub(this.pl.vector_2.unit().mul(this.pl.vector_2.mag()*0.5)),
+        this.pl.vector_1.unit().mul(d), this.pl.vector_2, true, true);
+      this._resetSurfaces();
+    }
+    else if(k==='thickness'&&+v>0){
+      const d=+v, mid=this.pl.midpoint();
+      this.pl=new Plane(
+        mid.sub(this.pl.vector_1.mul(0.5)).sub(this.pl.vector_2.unit().mul(d*0.5)),
+        this.pl.vector_1, this.pl.vector_2.unit().mul(d), true, true);
+      this._resetSurfaces();
+    }
+    else if(k==='reflect')  this.reflect=(v==='true'||v===true);
+    else if(k==='detector') this.detector=(v==='true'||v===true);
+    else if(k==='locked')   this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{this.pl.moveCenterTo(Vec3.fromString(v));this._resetSurfaces();}catch(e){}}
+    else if(k==='rot'){this.pl.rotateCenterTo(+v/RAD2DEG);this._resetSurfaces();}
+    else{
+      const elm=k.match(/^elm(\d+)$/);
+      if(elm){
+        const i=+elm[1];
+        if(i<this.surfaces.length){
+          this.surfaces[i].cs.parmFromString(v);
+          // Do NOT sort here — sorting mid-deserialization shifts indices,
+          // causing elm1/material1 etc to target the wrong surface.
+          // Sort is called once after all fields are loaded (postLoad).
+        }
+        return;
+      }
+      const mat=k.match(/^material(\d+)$/);
+      if(mat){
+        const i=+mat[1];
+        if(i<this.surfaces.length) this.surfaces[i].ma=new Material(v.replace(/_/g,' '));
+        return;
+      }
+    }
+  }
+
+  scatterRay(ray){
+    // Find the closest intersecting surface, skipping the one just hit
+    const skipIdx = (ray.lastOptic===this) ? ray.lastSurface : -1;
+    let bestIpt=null, bestIdx=-1;
+    for(let i=0;i<this.surfaces.length;i++){
+      if(i===skipIdx)continue;  // skip the surface this ray just came from
+      const ipt=this.surfaces[i].cs.intersect(ray.seg);
+      if(ipt&&ipt.t1>SENSITIVITY&&(!bestIpt||ipt.t1<bestIpt.t1)){
+        bestIpt=ipt; bestIdx=i;
+      }
+    }
+    if(!bestIpt)return null;
+
+    const ret=new OTRay(
+      {startpoint:ray.startpoint,
+       direct_vector:ray.direct_vector.unit().mul(bestIpt.t1*ray.direct_vector.mag()),
+       ray:false},
+      ray.wavelength, ray.index);
+
+    // Detector mode: absorb the ray — terminate with no new rays
+    if(this.detector){
+      return{returnRay:ret, t1:bestIpt.t1, newRays:[], surfaceIdx:bestIdx};
+    }
+
+    // Direct port of Java Curved.ScatterRays material selection:
+    // ma1 = material on the incoming side (or null = air)
+    // ma2 = material on the outgoing side (or null = air)
+    const ma1 = bestIdx>0 ? this.surfaces[bestIdx-1].ma : null;
+    const ma2 = bestIdx<this.surfaces.length-1 ? this.surfaces[bestIdx].ma : null;
+
+    let newRays;
+    if(ma2!==null){
+      newRays=ma2.refract(bestIpt.normal, bestIpt.pt, ray, this.pl, this.reflect, ma1);
+    } else if(ma1!==null){
+      newRays=ma1.refract(bestIpt.normal.mul(-1), bestIpt.pt, ray, this.pl, this.reflect, null);
+    } else {
+      newRays=new Material().refract(bestIpt.normal, bestIpt.pt, ray, this.pl, true, null);
+    }
+
+    return{returnRay:ret, t1:bestIpt.t1, newRays, surfaceIdx:bestIdx};
+  }
+
+  render(ctx, zg){
+    ctx.strokeStyle=this.detector ? '#ff8844' : '#88ccff'; ctx.lineWidth=1.5;
+    const midp=this.pl.midpoint();  // z=0 guaranteed
+    const uc=this.pl.cross.unit();
+    const v1=this.pl.vector_1;
+    const steps=24;
+
+    for(const surf of this.surfaces){
+      // Draw two half-curves from centre outward (mirrored), matching Java renderPlane
+      ctx.beginPath();
+      let first=true;
+      for(let i=0;i<=steps;i++){
+        const r=i/steps;
+        const r2=Math.sqrt(r)/2;           // parameterisation matching Java
+        const rsq=r2*r2*surf.cs.magvec1;
+        const sag=surf.cs.sagHeight(rsq);
+        const p=midp.add(uc.mul(sag)).add(v1.mul(r2));
+        const[sx,sy]=zg.worldToScreen(p);
+        if(first){ctx.moveTo(sx,sy);first=false;}else ctx.lineTo(sx,sy);
+      }
+      ctx.stroke();
+      // Mirror side
+      ctx.beginPath();
+      first=true;
+      for(let i=0;i<=steps;i++){
+        const r=i/steps;
+        const r2=Math.sqrt(r)/2;
+        const rsq=r2*r2*surf.cs.magvec1;
+        const sag=surf.cs.sagHeight(rsq);
+        const p=midp.add(uc.mul(sag)).add(v1.mul(-r2));
+        const[sx,sy]=zg.worldToScreen(p);
+        if(first){ctx.moveTo(sx,sy);first=false;}else ctx.lineTo(sx,sy);
+      }
+      ctx.stroke();
+    }
+    // Draw depth edges at the aperture ends to show 3D extent
+    ctx.strokeStyle='rgba(100,160,220,0.3)'; ctx.lineWidth=1;
+    const v2=this.pl.vector_2;
+    const topXY=midp.add(v1.mul(0.5));
+    const botXY=midp.sub(v1.mul(0.5));
+    zg.line(ctx,topXY,topXY.add(v2));
+    zg.line(ctx,botXY,botXY.add(v2));
+    // top and bottom back-edges
+    zg.line(ctx,topXY.add(v2),botXY.add(v2));
+  }
+
+  serialize(){
+    let s=`curved opticnumber ${this.id} nel ${this.surfaces.length} length ${this.pl.vector_1.mag().toFixed(4)} thickness ${this.pl.vector_2.mag().toFixed(4)} mid ${this.pl.midpoint()} rot ${(this.pl.angleOf()*RAD2DEG).toFixed(4)} reflect ${this.reflect} detector ${this.detector}`;
+    for(let i=0;i<this.surfaces.length;i++){
+      s+=` elm${i} ${this.surfaces[i].cs.parmToString().replace(/ /g,'_')}`;
+      if(i<this.surfaces.length-1)
+        s+=` material${i} ${this.surfaces[i].ma.toString().replace(/ /g,'_')}`;
+    }
+    s+=` locked ${this.locked}`;
+    return s;
+  }
+}
+
+// ===== RULER =====
+class Ruler extends Optic {
+  constructor(mid,len=100){
+    super();
+    this.pl=new Plane(mid.sub(new Vec3(len/2,0)),new Vec3(len,0,0),new Vec3(0,0,1),true,true);
+    this.numoff=false;this.thickness=1;
+  }
+  getPosition(){return this.pl.midpoint()}
+  move(p){if(!this.locked)this.pl.moveCenterTo(p)}
+  rotate(ang){
+    if(!this.locked) this.pl.rotateCenterTo(ang/RAD2DEG);
+  }
+  originateRays(){return null}
+  scatterRay(ray){return null}
+  getFields(){return[
+    {key:'length',label:'Length mm',type:'n'},
+    {key:'rot',label:'Angle°',type:'n'},
+    {key:'numoff',label:'Hide label?',type:'b'},
+    {key:'mid',label:'Position',type:'p'},
+    {key:'locked',label:'Locked?',type:'b'},
+  ]}
+  getFieldValue(k){
+    if(k==='length')return this.pl.vector_1.mag().toFixed(2);
+    if(k==='rot')return(this.pl.angleOf()*RAD2DEG).toFixed(2);
+    if(k==='mid')return this.pl.midpoint().toString();
+    if(k==='numoff')return this.numoff;
+    if(k==='locked')return this.locked;
+    if(k==='thickness')return this.thickness;
+    return null;
+  }
+  setFieldValue(k,v){
+    if(k==='length'){
+      const d=+v;
+      const mid=this.pl.midpoint();
+      const dir=this.pl.vector_1.unit().mul(d);
+      this.pl=new Plane(mid.sub(dir.mul(0.5)),dir,new Vec3(0,0,d),true,true);
+    }
+    else if(k==='rot')this.pl.rotateCenterTo(+v/RAD2DEG);
+    else if(k==='numoff')this.numoff=(v==='true'||v===true);
+    else if(k==='locked')this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{this.pl.moveCenterTo(Vec3.fromString(v))}catch(e){}}
+    else if(k==='thickness')this.thickness=+v;
+    else if(k==='cr1'){try{const p=Vec3.fromString(v);this.pl=new Plane(p,this.pl.vector_1,this.pl.vector_2,true,true)}catch(e){}}
+    else if(k==='cr2'){try{const p=Vec3.fromString(v);const s=this.pl.startpoint;this.pl=new Plane(s,p.sub(s),this.pl.vector_2,true,true)}catch(e){}}
+  }
+  render(ctx,zg){
+    ctx.strokeStyle='#4466ff';ctx.lineWidth=1;
+    const p1=this.pl.startpoint,p2=this.pl.startpoint.add(this.pl.vector_1);
+    zg.line(ctx,p1,p2);
+    // tick marks
+    const len=this.pl.vector_1.mag();const n=this.pl.vector_1.unit();
+    const perp=new Vec3(-n.y,n.x,0).mul(4/zg.mag);
+    const step=Math.max(Math.pow(10,Math.floor(Math.log10(len/5))),1);
+    for(let d=0;d<=len+1e-9;d+=step){
+      const p=p1.add(n.mul(d));
+      zg.line(ctx,p.sub(perp),p.add(perp));
+    }
+    if(!this.numoff){
+      const mid=this.pl.midpoint();
+      const sx=(mid.x-zg.dx)*zg.mag,sy=(mid.y-zg.dy)*zg.mag;
+      ctx.fillStyle='#aaaaff';ctx.font='10px monospace';
+      ctx.fillText(Math.round(len*10)/10+' mm',sx+4,sy-4);
+    }
+  }
+  serialize(){
+    const p1=this.pl.startpoint,p2=this.pl.startpoint.add(this.pl.vector_1);
+    return`ruler opticnumber ${this.id} length ${this.pl.vector_1.mag().toFixed(2)} thickness ${this.thickness} numoff ${this.numoff} cr1 ${p1.toString()} cr2 ${p2.toString()} locked ${this.locked}`;
+  }
+}
+
+// ===== PROTRACTOR =====
+class Protractor extends Optic {
+  constructor(mid,len=40){
+    super();
+    this.origin=mid.add(new Vec3(0));
+    this.len=len;
+    this.arm1=new Vec3(len,0,0);   // points right by default
+    this.arm2=new Vec3(0,len,0);   // points up by default
+    this.locked=false;
+  }
+  getPosition(){return this.origin}
+  move(p){if(!this.locked){this.origin=p}}
+  rotate(ang){
+    // Rotate both arms to point toward the mouse angle from origin
+    if(this.locked)return;
+    const rad=ang/RAD2DEG;
+    // Preserve the angle between arms, just rotate the whole protractor
+    const cur=Math.atan2(this.arm1.y,this.arm1.x);
+    const delta=rad-cur;
+    const rot=(v)=>new Vec3(v.x*Math.cos(delta)-v.y*Math.sin(delta),
+                            v.x*Math.sin(delta)+v.y*Math.cos(delta),v.z);
+    this.arm1=rot(this.arm1);
+    this.arm2=rot(this.arm2);
+  }
+  // Move an individual arm tip (called from drag logic)
+  moveArm(armIdx, p){
+    if(this.locked)return;
+    const dir=p.sub(this.origin);
+    const newArm=dir.unit().mul(this.len);
+    if(armIdx===1) this.arm1=newArm;
+    else           this.arm2=newArm;
+  }
+  getTip1(){return this.origin.add(this.arm1)}
+  getTip2(){return this.origin.add(this.arm2)}
+  originateRays(){return null}
+  scatterRay(ray){return null}
+  getFields(){return[
+    {key:'length',label:'Arm length mm',type:'n'},
+    {key:'arm1ang',label:'Arm 1 angle°',type:'n'},
+    {key:'arm2ang',label:'Arm 2 angle°',type:'n'},
+    {key:'mid',label:'Origin',type:'p'},
+    {key:'locked',label:'Locked?',type:'b'},
+  ]}
+  getFieldValue(k){
+    if(k==='length')return this.len.toFixed(1);
+    if(k==='arm1ang')return(Math.atan2(this.arm1.y,this.arm1.x)*RAD2DEG).toFixed(1);
+    if(k==='arm2ang')return(Math.atan2(this.arm2.y,this.arm2.x)*RAD2DEG).toFixed(1);
+    if(k==='mid')return this.origin.toString();
+    if(k==='locked')return this.locked;
+    return null;
+  }
+  setFieldValue(k,v){
+    if(k==='length'){
+      this.len=Math.max(1,+v);
+      this.arm1=this.arm1.unit().mul(this.len);
+      this.arm2=this.arm2.unit().mul(this.len);
+    }
+    else if(k==='arm1ang'){const a=+v/RAD2DEG;this.arm1=new Vec3(Math.cos(a),Math.sin(a),0).mul(this.len)}
+    else if(k==='arm2ang'){const a=+v/RAD2DEG;this.arm2=new Vec3(Math.cos(a),Math.sin(a),0).mul(this.len)}
+    else if(k==='locked')this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{this.origin=Vec3.fromString(v)}catch(e){}}
+    else if(k==='cr1'){try{this.origin=Vec3.fromString(v)}catch(e){}}
+    else if(k==='cr2'){try{const p=Vec3.fromString(v);this.arm1=p.sub(this.origin).unit().mul(this.len)}catch(e){}}
+    else if(k==='cr3'){try{const p=Vec3.fromString(v);this.arm2=p.sub(this.origin).unit().mul(this.len)}catch(e){}}
+    else if(k==='thickness'){}
+  }
+  render(ctx,zg){
+    ctx.strokeStyle='#44ff88';ctx.lineWidth=1.5;
+    const tip1=this.getTip1(),tip2=this.getTip2();
+    zg.line(ctx,this.origin,tip1);
+    zg.line(ctx,this.origin,tip2);
+    // Draw arm tip dots
+    ctx.fillStyle='#44ff88';
+    for(const tip of [tip1,tip2]){
+      const[tx,ty]=zg.worldToScreen(tip);
+      ctx.beginPath();ctx.arc(tx,ty,4,0,2*Math.PI);ctx.fill();
+    }
+    // Angle arc between arms
+    const a1=Math.atan2(this.arm1.y,this.arm1.x);
+    const a2=Math.atan2(this.arm2.y,this.arm2.x);
+    const[ox,oy]=zg.worldToScreen(this.origin);
+    const arcR=Math.min(this.len*0.35*zg.mag,30);
+    ctx.strokeStyle='rgba(68,255,136,0.5)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(ox,oy,arcR,a1,a2);ctx.stroke();
+    // Angle label
+    let ang=Math.abs(a1-a2)*RAD2DEG;
+    if(ang>180)ang=360-ang;
+    ctx.fillStyle='#88ffaa';ctx.font='13px monospace';
+    ctx.fillText(ang.toFixed(1)+'°',ox+6,oy-6);
+  }
+  serialize(){
+    return`protractor opticnumber ${this.id} cr1 ${this.origin.toString()} cr2 ${this.getTip1().toString()} cr3 ${this.getTip2().toString()} length ${this.len} thickness 0 locked ${this.locked}`;
+  }
+}
+
+// ===== TEXT LABEL =====
+class TextLabel extends Optic {
+  constructor(pos,text='Label'){
+    super();
+    this.pos=pos.add(new Vec3(0));
+    this.text=text;
+    this.locked=false;
+  }
+  getPosition(){return this.pos}
+  move(p){if(!this.locked)this.pos=p}
+  rotate(){}
+  originateRays(){return null}
+  scatterRay(ray){return null}
+  getFields(){return[
+    {key:'text',label:'Text',type:'s'},
+    {key:'mid',label:'Position',type:'p'},
+    {key:'locked',label:'Locked?',type:'b'},
+  ]}
+  getFieldValue(k){
+    if(k==='text')return this.text;
+    if(k==='mid')return this.pos.toString();
+    if(k==='locked')return this.locked;
+    return null;
+  }
+  setFieldValue(k,v){
+    if(k==='text')this.text=v.replace(/_/g,' ');
+    else if(k==='locked')this.locked=(v==='true'||v===true);
+    else if(k==='mid'){try{this.pos=Vec3.fromString(v)}catch(e){}}
+  }
+  render(ctx,zg){
+    const sx=(this.pos.x-zg.dx)*zg.mag,sy=(this.pos.y-zg.dy)*zg.mag;
+    ctx.fillStyle='rgba(200,210,220,0.85)';ctx.font='11px monospace';
+    ctx.fillText(this.text,sx,sy);
+  }
+  serialize(){return`text opticnumber ${this.id} text ${this.text.replace(/ /g,'_')} mid ${this.pos.toString()} locked ${this.locked}`}
+}
+
+// ===== ZOOM GRAPHICS HELPER =====
+// Orthographic projection constants (matching Java Ray.xshift/yshift = 0.15)
+const ORTHO_X = 0.15;  // screen_x += world_z * ORTHO_X
+const ORTHO_Y = 0.15;  // screen_y += world_z * ORTHO_Y
+
+class ZoomG {
+  constructor(canvas){
+    this.canvas=canvas;
+    this.dx=0;this.dy=0;this.mag=1.0;
+  }
+  // Project a 3D world point to 2D screen coordinates using orthographic projection
+  worldToScreen(p){
+    const ox=p.x+(p.z||0)*ORTHO_X;
+    const oy=p.y+(p.z||0)*ORTHO_Y;
+    return[(ox-this.dx)*this.mag,(oy-this.dy)*this.mag];
+  }
+  // Inverse: screen to world always gives z=0 (can't recover z from 2D click)
+  screenToWorld(x,y){return new Vec3(x/this.mag+this.dx,y/this.mag+this.dy,0)}
+  // Draw a line between two 3D world points with orthographic projection
+  line(ctx,p1,p2){
+    const[x1,y1]=this.worldToScreen(p1);
+    const[x2,y2]=this.worldToScreen(p2);
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  }
+  dot(ctx,p,r=3){
+    const[x,y]=this.worldToScreen(p);
+    ctx.beginPath();ctx.arc(x,y,r,0,2*Math.PI);ctx.fill();
+  }
+  // Draw a plane as a parallelogram with 4 edges + midline, matching Java Plane.renderPlane.
+  // sp=startpoint, v1=vector_1, v2=vector_2
+  renderPlane(ctx, sp, v1, v2){
+    const p00=sp;
+    const p10=sp.add(v1);
+    const p01=sp.add(v2);
+    const p11=sp.add(v1).add(v2);
+    const pm0=sp.add(v2.mul(0.5));        // midpoint of near edge
+    const pm1=sp.add(v1).add(v2.mul(0.5));// midpoint of far edge
+    this.line(ctx,p00,p10);  // bottom edge (along v1)
+    this.line(ctx,p01,p11);  // top edge (along v1, offset by v2)
+    this.line(ctx,p00,p01);  // left edge (along v2)
+    this.line(ctx,p10,p11);  // right edge (along v2)
+    this.line(ctx,pm0,pm1);  // midline (at half-depth)
+  }
+}
+
+// ===== SCENE STATE =====
+let optics=[];
+let hideRays=false;let hideDots=false;let maxPasses=50;
+// ===== LAYOUT ENTRIES =====
+// Each entry: {opticno, distance, angle, displacement, back, fromoptic, reflectno}
+let layoutEntries=[];
+let selectedOptic=null;
+let hoveredOptic=null;
+let mode='move';
+let addingType=null;
+let addStep=0;
+let addPoints=[];
+let mousePos=new Vec3(0,0,0);
+
+const canvas=document.getElementById('mainCanvas');
+const ctx=canvas.getContext('2d');
+const zg=new ZoomG(canvas);
+
+function resizeCanvas(){
+  const area=document.getElementById('canvas-area');
+  canvas.width=area.clientWidth;
+  canvas.height=area.clientHeight;
+  redraw();
+}
+window.addEventListener('resize',resizeCanvas);
+setTimeout(resizeCanvas,0);
+
+// ===== RAY TRACING — see traceRaysWithData below =====
+
+// ===== DRAW =====
+function redraw(){
+  const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  // Background grid
+  ctx.strokeStyle='#0f1520';ctx.lineWidth=1;
+  const gridStep=50*zg.mag;
+  const ox=(-zg.dx*zg.mag)%gridStep;
+  const oy=(-zg.dy*zg.mag)%gridStep;
+  for(let x=ox;x<W;x+=gridStep){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=oy;y<H;y+=gridStep){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+  // Ray tracing
+  if(!hideRays){
+    lastTraceSegs=traceRaysWithData();
+    for(const seg of lastTraceSegs){
+      const isSelRay=(selectedRay&&seg===selectedRay);
+      // Off-axis: ray displaced in z — render at 60% brightness like Java
+      const z1=seg.p1.z||0, z2=seg.p2.z||0;
+      const offAxis=(Math.abs(z1)>1||Math.abs(z2)>1);
+      ctx.strokeStyle=offAxis?dimColor(seg.color,0.6):seg.color;
+      ctx.lineWidth=isSelRay?3:1.5;
+      if(isSelRay){ctx.shadowColor=seg.color;ctx.shadowBlur=6;}
+      zg.line(ctx,seg.p1,seg.p2);
+      if(isSelRay)ctx.shadowBlur=0;
+    }
+  } else {
+    lastTraceSegs=[];
+    document.getElementById('stRays').textContent=0;
+  }
+
+  // Render optics + handles
+  for(const op of optics){
+    ctx.save();
+    op.render(ctx,zg);
+
+    const pos=op.getPosition();
+    const[sx,sy]=zg.worldToScreen(pos);
+    const isSelected=(op===selectedOptic);
+    const isHovered=(op===hoveredOptic);
+
+    if(isSelected){
+      // Bright filled dot + outer ring
+      ctx.fillStyle='#4a9eff';
+      ctx.beginPath();ctx.arc(sx,sy,4,0,2*Math.PI);ctx.fill();
+      ctx.strokeStyle='#4a9eff';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(sx,sy,9,0,2*Math.PI);ctx.stroke();
+    } else if(isHovered){
+      // Slightly larger ring in accent colour
+      ctx.fillStyle='rgba(74,158,255,0.5)';
+      ctx.beginPath();ctx.arc(sx,sy,4,0,2*Math.PI);ctx.fill();
+      ctx.strokeStyle='rgba(74,158,255,0.8)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(sx,sy,9,0,2*Math.PI);ctx.stroke();
+    } else {
+      // Always-visible dim dot so you can find the handle
+      ctx.fillStyle='rgba(150,170,200,0.35)';
+      ctx.beginPath();ctx.arc(sx,sy,3,0,2*Math.PI);ctx.fill();
+      ctx.strokeStyle='rgba(150,170,200,0.25)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(sx,sy,7,0,2*Math.PI);ctx.stroke();
+    }
+
+    // For locked optics, draw a small padlock indicator
+    if(op.locked){
+      ctx.fillStyle='rgba(255,180,50,0.6)';
+      ctx.font=`${Math.max(8,9)}px monospace`;
+      ctx.fillText('🔒',sx+8,sy-8);
+    }
+
+    ctx.restore();
+  }
+
+  // Add preview
+  if(addingType){
+    const mp=mousePos;
+    ctx.setLineDash([5,4]);
+    ctx.lineWidth=1.5;
+
+    if(addingType==='prism'){
+      ctx.strokeStyle='rgba(255,220,80,0.85)';
+      ctx.fillStyle='rgba(255,220,80,0.9)';
+      // completed edges between placed points
+      for(let i=0;i<addPoints.length-1;i++){
+        ctx.setLineDash([]);
+        zg.line(ctx,addPoints[i],addPoints[i+1]);
+      }
+      // live edge to cursor
+      if(addPoints.length>=1){
+        ctx.setLineDash([5,4]);
+        ctx.strokeStyle='rgba(255,220,80,0.85)';
+        zg.line(ctx,addPoints[addPoints.length-1],mp);
+        // faint closing preview back to first point
+        if(addPoints.length>=2){
+          ctx.strokeStyle='rgba(255,220,80,0.3)';
+          zg.line(ctx,mp,addPoints[0]);
+        }
+      }
+      // vertex dots
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(255,220,80,0.9)';
+      for(const pt of addPoints){
+        const[px,py]=zg.worldToScreen(pt);
+        ctx.beginPath();ctx.arc(px,py,4,0,2*Math.PI);ctx.fill();
+      }
+      // instruction near cursor
+      const[mx,my]=zg.worldToScreen(mp);
+      ctx.fillStyle='rgba(255,220,80,0.8)';
+      ctx.font='12px monospace';
+      const msg=addPoints.length===0?'Click 3 corners to place prism':
+                addPoints.length===1?'Click 2nd corner':
+                'Click 3rd corner to finish';
+      ctx.fillText(msg,mx+12,my-10);
+
+    } else {
+      // Two-point / single-click optics
+      ctx.strokeStyle='rgba(100,200,255,0.8)';
+      ctx.fillStyle='rgba(100,200,255,0.9)';
+      const[mx,my]=zg.worldToScreen(mp);
+
+      if(addPoints.length===0){
+        // Show crosshair at cursor and instruction
+        ctx.setLineDash([]);
+        ctx.beginPath();ctx.arc(mx,my,5,0,2*Math.PI);ctx.fill();
+        ctx.fillStyle='rgba(100,200,255,0.7)';
+        ctx.font='12px monospace';
+        ctx.fillText(`Click to place ${addingType}`,mx+10,my-10);
+      }
+      // (finishAdd is called immediately on first click, so length>0 won't persist)
+    }
+    ctx.setLineDash([]);
+  }
+
+  // Draw rotation arm when in rotate mode and dragging
+  if(mode==='rotate'&&isDragging&&dragOptic&&!(dragOptic instanceof Protractor)){
+    const opPos=dragOptic.getPosition();
+    const[ox,oy]=zg.worldToScreen(opPos);
+    const curSX=((mousePos.x-zg.dx)*zg.mag);
+    const curSY=((mousePos.y-zg.dy)*zg.mag);
+    const armDx=curSX-ox, armDy=curSY-oy;
+    const screenDist=Math.sqrt(armDx*armDx+armDy*armDy);
+    ctx.save();
+    ctx.setLineDash([4,4]);
+    ctx.lineWidth=1.5;
+    // Line from optic centre to cursor
+    ctx.strokeStyle=rotEngaged?'rgba(92,184,255,0.9)':'rgba(255,180,50,0.7)';
+    ctx.beginPath();
+    ctx.moveTo(ox,oy);
+    ctx.lineTo(curSX,curSY);
+    ctx.stroke();
+    // Dead zone circle centred on optic
+    ctx.setLineDash([2,4]);
+    ctx.strokeStyle='rgba(255,180,50,0.4)';
+    ctx.beginPath();
+    ctx.arc(ox,oy,ROT_DEAD_ZONE,0,2*Math.PI);
+    ctx.stroke();
+    // Label
+    ctx.setLineDash([]);
+    ctx.fillStyle=rotEngaged?'rgba(92,184,255,0.9)':'rgba(255,180,50,0.8)';
+    ctx.font='11px monospace';
+    const rotVal=+(dragOptic.getFieldValue('rot')||0);
+    const ang=((rotVal%360+360)%360).toFixed(1)+'°';
+    ctx.fillText(rotEngaged?ang:'move away to rotate',curSX+8,curSY-6);
+    ctx.restore();
+  }
+    document.getElementById('stOptics').textContent=optics.length;
+  document.getElementById('stZoom').textContent=zg.mag.toFixed(2);
+}
+
+// ===== INTERACTION =====
+function setMode(m){
+  mode=m;addingType=null;addStep=0;addPoints=[];
+  document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('btn-'+m);
+  if(btn)btn.classList.add('active');
+  document.getElementById('stMode').textContent=m.toUpperCase();
+  canvas.style.cursor=m==='move'?'default':m==='edit'?'pointer':'crosshair';
+}
+
+function startAdd(type){
+  addingType=type;addStep=0;addPoints=[];
+  canvas.style.cursor='crosshair';
+  document.getElementById('stMode').textContent='ADD '+type.toUpperCase();
+}
+
+let isDragging=false,dragOptic=null,dragArmIdx=0,dragOffset=null;
+let isPanning=false,panStart=null;
+// Rotation arm state
+// Rotation arm: threshold is distance from OPTIC CENTRE in screen pixels
+const ROT_DEAD_ZONE=40;
+let rotEngaged=false;    // true once cursor has moved far enough from optic centre
+let rotBaseAngle=0;      // optic body angle at moment engagement starts
+let rotStartArmAngle=0;  // atan2(cursor-opticCentre) at moment of engagement (radians)
+
+canvas.addEventListener('mousedown',e=>{
+  const wp=zg.screenToWorld(e.offsetX,e.offsetY);
+  if(e.button===1||(e.button===0&&e.altKey)){isPanning=true;panStart={x:e.clientX,y:e.clientY};return}
+  if(addingType){
+    addPoints.push(wp);
+    if(addingType==='prism'){
+      if(addPoints.length===3) finishAdd();
+    } else if(addingType==='text'){
+      finishAdd(wp);
+    } else {
+      if(addPoints.length===1){
+        finishAdd(wp);
+      } else {
+        finishAdd(addPoints[0],wp);
+      }
+    }
+    redraw();return;
+  }
+  if(mode==='move'){
+    const hit=findOpticAt(wp);
+    if(hit){
+      selectOptic(hit.op);
+      if(!hit.op.locked){
+        dragOptic=hit.op;dragArmIdx=hit.armIdx;isDragging=true;
+        dragOffset=wp.sub(hit.op.getPosition());
+      }
+    } else {
+      selectOptic(null);
+      const raySeg=findRaySegAt(wp);
+      if(raySeg){showRayData(raySeg);redraw();}
+    }
+  } else if(mode==='rotate'){
+    const hit=findOpticAt(wp);
+    if(hit){
+      selectOptic(hit.op);
+      if(!hit.op.locked){
+        dragOptic=hit.op;dragArmIdx=hit.armIdx;isDragging=true;
+        rotEngaged=false;
+        rotBaseAngle=+(hit.op.getFieldValue('rot')||0);
+      }
+    } else {
+      const raySeg=findRaySegAt(wp);
+      if(raySeg){showRayData(raySeg);redraw();}
+    }
+  } else if(mode==='edit'){
+    const hit=findOpticAt(wp);
+    if(hit){
+      selectOptic(hit.op);
+    } else {
+      // In edit mode, clicking a ray shows its data without deselecting the optic
+      const raySeg=findRaySegAt(wp);
+      if(raySeg){showRayData(raySeg);redraw();}
+    }
+  } else if(mode==='delete'){
+    const hit=findOpticAt(wp);
+    if(hit){optics=optics.filter(o=>o!==hit.op);if(selectedOptic===hit.op)selectOptic(null);redraw()}
+  }
+});
+
+canvas.addEventListener('mousemove',e=>{
+  const wp=zg.screenToWorld(e.offsetX,e.offsetY);
+  mousePos=wp;
+  document.getElementById('stPos').textContent=`${wp.x.toFixed(1)}, ${wp.y.toFixed(1)}`;
+  if(isPanning&&panStart){
+    const dx=(e.clientX-panStart.x)/zg.mag;
+    const dy=(e.clientY-panStart.y)/zg.mag;
+    zg.dx-=dx;zg.dy-=dy;
+    panStart={x:e.clientX,y:e.clientY};
+    redraw();return;
+  }
+  if(isDragging&&dragOptic){
+    if(mode==='move'){
+      if(dragArmIdx>0&&dragOptic instanceof Protractor){
+        // Drag an individual protractor arm tip
+        dragOptic.moveArm(dragArmIdx,wp);
+      } else {
+        dragOptic.move(wp.sub(dragOffset));
+      }
+    } else if(mode==='rotate'){
+      if(dragArmIdx>0&&dragOptic instanceof Protractor){
+        dragOptic.moveArm(dragArmIdx,wp);
+      } else {
+        // Arm vector: from optic centre (screen) to cursor (screen)
+        const pos=dragOptic.getPosition();
+        const[ocx,ocy]=zg.worldToScreen(pos);
+        const dsx=e.offsetX-ocx, dsy=e.offsetY-ocy;
+        const screenDist=Math.sqrt(dsx*dsx+dsy*dsy);
+        if(!rotEngaged){
+          if(screenDist>=ROT_DEAD_ZONE){
+            rotEngaged=true;
+            rotStartArmAngle=Math.atan2(dsy,dsx);
+          }
+          // In dead zone: draw indicator but don't rotate
+        } else {
+          // Absolute angle of arm from optic centre — always well-defined
+          const curArmAngle=Math.atan2(dsy,dsx);
+          let delta=(curArmAngle-rotStartArmAngle)*RAD2DEG;
+          // Clamp to [-180,+180]
+          if(delta>180)delta-=360;
+          if(delta<-180)delta+=360;
+          dragOptic.rotate(rotBaseAngle+delta);
+        }
+      }
+    }
+    updatePropsPanel();
+    redraw();
+  } else {
+    // Update hover — only when not dragging
+    const hit = addingType ? null : findOpticAt(wp);
+    const newHovered = hit ? hit.op : null;
+    if(newHovered !== hoveredOptic){
+      hoveredOptic = newHovered;
+      canvas.style.cursor = newHovered ? (mode==='delete'?'crosshair':'grab') : 'default';
+      redraw();
+    }
+  }
+  if(addingType)redraw();
+});
+
+canvas.addEventListener('mouseup',e=>{
+  isDragging=false;dragOptic=null;isPanning=false;panStart=null;
+  rotEngaged=false;
+});
+
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const factor=e.deltaY<0?1.15:0.87;
+  const wp=zg.screenToWorld(e.offsetX,e.offsetY);
+  zg.mag*=factor;
+  zg.dx=wp.x-e.offsetX/zg.mag;
+  zg.dy=wp.y-e.offsetY/zg.mag;
+  redraw();
+},{passive:false});
+
+canvas.addEventListener('mouseleave',e=>{
+  if(hoveredOptic){hoveredOptic=null;redraw();}
+});
+
+canvas.addEventListener('contextmenu',e=>{e.preventDefault();if(addingType){addingType=null;addPoints=[];addStep=0;redraw()}});
+
+function finishAdd(p1,p2){
+  let op;
+  const pos=p1||(addPoints.length?addPoints[0]:new Vec3(300,300));
+  // Default: if only one point, create with horizontal orientation and default size
+  if(addingType==='laser'){
+    op=new Laser(pos);
+    if(p2&&p2.sub(pos).mag()>2){
+      const d=p2.sub(pos);
+      op.pl=Plane.fromCenterDir(pos.add(d.mul(0.5)),d,true,true);
+    }
+  } else if(addingType==='gaussian'){
+    op=new GaussianSource(pos);
+    if(p2&&p2.sub(pos).mag()>2){
+      const d=p2.sub(pos);
+      op.pl=Plane.fromCenterDir(pos.add(d.mul(0.5)),d,true,true);
+    }
+  } else if(addingType==='aberration'){
+    op=new AberrationSource(pos);
+    if(p2&&p2.sub(pos).mag()>2){const d=p2.sub(pos);op.pl=Plane.fromCenterDir(pos.add(d.mul(0.5)),d,true,true)}
+  } else if(addingType==='quiver'){
+    op=new QuiverSource(pos);
+    if(p2&&p2.sub(pos).mag()>2){const d=p2.sub(pos);op.pl=Plane.fromCenterDir(pos.add(d.mul(0.5)),d,true,true)}
+  } else if(addingType==='lens'){
+    op=new Lens(pos);
+    if(p2&&p2.sub(pos).mag()>2){
+      const d=p2.sub(pos);
+      op.pl=Plane.fromCenterDir(pos.add(d.mul(0.5)),d,true,true);
+    }
+  } else if(addingType==='flat'){
+    op=new Flat(pos);
+    if(p2&&p2.sub(pos).mag()>2){
+      const d=p2.sub(pos);
+      op.pl=Plane.fromCenterDir(pos.add(d.mul(0.5)),d,true,true);
+    }
+  } else if(addingType==='prism'){
+    if(addPoints.length>=3) op=new Prism(addPoints[0],addPoints[1],addPoints[2]);
+    else op=new Prism(pos);
+  } else if(addingType==='grating'){
+    op=new Grating(pos);
+    if(p2&&p2.sub(pos).mag()>2){
+      const d=p2.sub(pos);
+      op.pl=Plane.fromCenterDir(pos.add(d.mul(0.5)),d,true,true);
+    }
+  } else if(addingType==='curved'){
+    op=new CurvedOptic(pos);
+    if(p2&&p2.sub(pos).mag()>2){
+      const d=p2.sub(pos);
+      op.pl=Plane.fromCenterDir(pos.add(d.mul(0.5)),d,true,true);
+    }
+  } else if(addingType==='abcd'){
+    op=new ABCDOptic(pos);
+    if(p2&&p2.sub(pos).mag()>2){
+      const d=p2.sub(pos);
+      op.pl=Plane.fromCenterDir(pos.add(d.mul(0.5)),d,true,true);
+    }
+  } else if(addingType==='ruler'){
+    op=new Ruler(pos);
+    if(p2&&p2.sub(pos).mag()>2){
+      const d=p2.sub(pos);
+      op.pl=new Plane(pos,d,new Vec3(0,0,d.mag()),true,true);
+    }
+  } else if(addingType==='protractor'){
+    op=new Protractor(pos);
+    if(p2&&p2.sub(pos).mag()>2){
+      op.arm1=p2.sub(pos).unit().mul(op.len);
+      op.arm1.z=op.len;
+    }
+  } else if(addingType==='text'){
+    // Don't use prompt() — show an inline input in the props panel instead
+    pendingTextPos=pos;
+    addingType=null;addStep=0;addPoints=[];
+    setMode('move');
+    showTextInput(pos);
+    redraw();
+    return;
+  }
+  if(op){optics.push(op);selectOptic(op)}
+  addingType=null;addStep=0;addPoints=[];
+  setMode('move');
+  redraw();
+}
+
+function findOpticAt(wp){
+  const threshold=12/zg.mag;
+  // Project click point (z=0 from screenToWorld) — no-op but explicit
+  const pwp=orthoProject(wp);
+  // 2D projected distance between two world points
+  const dist2d=(a,b)=>{
+    const pa=orthoProject(a), pb=orthoProject(b);
+    return Math.sqrt((pa.x-pb.x)**2+(pa.y-pb.y)**2);
+  };
+  const dist2dSeg=(p,a,b)=>{
+    const pp=orthoProject(p), pa=orthoProject(a), pb=orthoProject(b);
+    return distPointToSegment(pp,pa,pb);
+  };
+
+  for(let i=optics.length-1;i>=0;i--){
+    const op=optics[i];
+    const pos=op.getPosition();
+    if(dist2d(pos,wp)<threshold)return {op,armIdx:0};
+    if(op instanceof Laser||op instanceof GaussianSource||op instanceof AberrationSource||op instanceof QuiverSource||op instanceof Lens||op instanceof Flat||op instanceof Grating||op instanceof CurvedOptic||op instanceof Ruler||op instanceof ABCDOptic){
+      const p1=op.pl.startpoint;const p2=op.pl.startpoint.add(op.pl.vector_1);
+      if(dist2dSeg(wp,p1,p2)<threshold)return {op,armIdx:0};
+    }
+    if(op instanceof Prism){
+      for(const pl of op.planes){
+        const p1=pl.startpoint,p2=pl.startpoint.add(pl.vector_1);
+        if(dist2dSeg(wp,p1,p2)<threshold)return {op,armIdx:0};
+      }
+    }
+    if(op instanceof Protractor){
+      if(dist2d(op.getTip1(),wp)<threshold) return {op,armIdx:1};
+      if(dist2d(op.getTip2(),wp)<threshold) return {op,armIdx:2};
+    }
+  }
+  return null;
+}
+
+// ===== PANEL TAB SWITCHING =====
+function switchTab(name){
+  document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel-page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+}
+
+// ===== PROPERTIES PANEL =====
+function selectOptic(op){
+  selectedOptic=op;
+  updatePropsPanel();
+  redraw();
+}
+
+// ===== TEXT LABEL INLINE INPUT =====
+let pendingTextPos=null;
+
+function showTextInput(pos){
+  switchTab('props');
+  const panel=document.getElementById('propsContent');
+  panel.innerHTML=`
+    <div style="color:var(--accent);font-size:13px;margin-bottom:10px;letter-spacing:1px">ADD TEXT LABEL</div>
+    <div class="prop-row">
+      <span class="prop-label">Text</span>
+      <input type="text" class="prop-input" id="newTextInput" value="Label"
+             onkeydown="if(event.key==='Enter')commitTextLabel();if(event.key==='Escape')cancelTextLabel()">
+    </div>
+    <div style="padding:8px;display:flex;gap:6px">
+      <button class="hdr-btn" onclick="commitTextLabel()" style="flex:1">ADD</button>
+      <button class="hdr-btn" onclick="cancelTextLabel()" style="flex:1">CANCEL</button>
+    </div>
+    <div style="padding:4px 8px;color:var(--text-dim);font-size:11px">Press Enter to confirm, Escape to cancel</div>
+  `;
+  setTimeout(()=>{const inp=document.getElementById('newTextInput');if(inp){inp.focus();inp.select();}},50);
+}
+
+function commitTextLabel(){
+  const inp=document.getElementById('newTextInput');
+  const txt=inp?inp.value.trim():'';
+  if(txt&&pendingTextPos){
+    const op=new TextLabel(pendingTextPos,txt);
+    optics.push(op);
+    selectOptic(op);
+  }
+  pendingTextPos=null;
+  redraw();
+}
+
+function cancelTextLabel(){
+  pendingTextPos=null;
+  updatePropsPanel();
+}
+
+function updatePropsPanel(){
+  const panel=document.getElementById('propsContent');
+  if(!selectedOptic){
+    panel.innerHTML='<p class="hint-text">Click an optic to edit its properties.</p>';
+    return;
+  }
+  const op=selectedOptic;
+  let html=`<div style="color:var(--accent);font-size:13px;margin-bottom:10px;letter-spacing:1px;font-weight:bold">${op.constructor.name.toUpperCase()} #${op.id}</div>`;
+  for(const f of op.getFields()){
+    const val=op.getFieldValue(f.key);
+    if(f.type==='b'){
+      html+=`<div class="prop-row inline-row">`;
+      html+=`<span class="prop-label">${f.label}</span>`;
+      html+=`<input type="checkbox" class="prop-checkbox" ${val?'checked':''} onchange="setProp('${f.key}',this.checked?'true':'false')">`;
+    } else {
+      html+=`<div class="prop-row">`;
+      html+=`<span class="prop-label">${f.label}</span>`;
+      html+=`<input type="text" class="prop-input" value="${val??''}" onchange="setProp('${f.key}',this.value)" onblur="setProp('${f.key}',this.value)">`;
+    }
+    html+=`</div>`;
+  }
+  html+=`<button class="del-btn" onclick="deleteSelected()">DELETE OPTIC</button>`;
+  panel.innerHTML=html;
+}
+
+function setProp(key,val){
+  if(!selectedOptic)return;
+  selectedOptic.setFieldValue(key,val);
+  updatePropsPanel();  // regenerate panel in case field list changed (e.g. nel)
+  redraw();
+}
+
+function deleteSelected(){
+  if(!selectedOptic)return;
+  optics=optics.filter(o=>o!==selectedOptic);
+  selectOptic(null);redraw();
+}
+
+// ===== RAY CLICK PICKING =====
+// lastTraceSegs is populated every redraw; stores {p1,p2,color,ray} with the OTRay attached
+let lastTraceSegs=[];
+let selectedRay=null;
+
+// Rebuild traceRays to also store the OTRay on each segment
+function traceRaysWithData(){
+  const allRaySegs=[];
+  let totalRays=0;
+  for(const op of optics){
+    const initRays=op.originateRays();
+    if(!initRays||initRays.length===0)continue;
+    for(const r0 of initRays){
+      r0.parentOptic=op;
+      r0.lastOptic=op;
+      r0.lastSurface=-1;  // index of the surface last hit (-1 = none)
+      const queue=[r0];
+      let passes=0;
+      while(queue.length&&passes<maxPasses){
+        const ray=queue.shift();passes++;
+        let bestResult=null,bestT=Infinity,bestOp=null;
+        for(const op2 of optics){
+          // For curved optics and prisms: allow re-entry on DIFFERENT surfaces/faces
+          // For all others: skip if we just came from this optic
+          if(op2===ray.lastOptic && !(op2 instanceof CurvedOptic) && !(op2 instanceof Prism))continue;
+          const result=op2.scatterRay(ray);
+          if(result&&result.t1<bestT){bestT=result.t1;bestResult=result;bestOp=op2}
+        }
+        if(bestResult){
+          const segLen=bestT*ray.direct_vector.mag();
+          const p2=ray.startpoint.add(ray.direct_vector.unit().mul(segLen));
+          ray.segmentLength=segLen;
+          if(bestResult.returnRay&&bestResult.returnRay.extralen){
+            ray.extralen=bestResult.returnRay.extralen;
+          }
+          // hitOptic: the optic this segment terminates on (distinct from ray.lastOptic
+          // which records who emitted this ray).  Used for bundle filtering in the
+          // wavefront panel so we can identify all rays landing on the same surface.
+          allRaySegs.push({p1:ray.startpoint,p2,color:ray.getColor(),ray,hitOptic:bestOp});
+          totalRays++;
+          for(const nr of bestResult.newRays){
+            nr.parentOptic=ray.parentOptic;
+            nr.lastOptic=bestOp;
+            nr.lastSurface=bestResult.surfaceIdx!==undefined?bestResult.surfaceIdx:-1;
+            // Propagate Gaussian probe tags so beam parameters can be extracted anywhere
+            if(ray.gaussianProbeIdx!==undefined){ nr.gaussianProbeIdx=ray.gaussianProbeIdx; }
+            if(ray.gaussianSource!==undefined){ nr.gaussianSource=ray.gaussianSource; }
+            queue.push(nr);
+          }
+        } else {
+          // Ray goes to infinity — geometric length is unknown, mark as such
+          ray.segmentLength=null;
+          const p2=ray.startpoint.add(ray.direct_vector.unit().mul(2000));
+          allRaySegs.push({p1:ray.startpoint,p2,color:ray.getColor(),ray,hitOptic:null});
+          totalRays++;
+        }
+      }
+    }
+  }
+  document.getElementById('stRays').textContent=totalRays;
+  return allRaySegs;
+}
+
+function findRaySegAt(wp){
+  // Ray picking must use orthographic projection — rays with z≠0 appear
+  // shifted on screen by z*ORTHO_X, z*ORTHO_Y, matching the rendering.
+  const threshold=8/zg.mag;
+  const pw=orthoProject(wp);  // wp has z=0, so this is just wp
+  let bestDist=Infinity,bestSeg=null;
+  for(const seg of lastTraceSegs){
+    const pa=orthoProject(seg.p1);
+    const pb=orthoProject(seg.p2);
+    const d=distPointToSegment(pw,pa,pb);
+    if(d<threshold&&d<bestDist){bestDist=d;bestSeg=seg}
+  }
+  return bestSeg;
+}
+
+// Dim a CSS color string by a factor (0..1) for off-axis ray rendering
+function dimColor(color, factor){
+  // Parse hex or rgb color and scale RGB components
+  const m=color.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if(m){
+    const r=Math.round(parseInt(m[1],16)*factor);
+    const g=Math.round(parseInt(m[2],16)*factor);
+    const b=Math.round(parseInt(m[3],16)*factor);
+    return`rgb(${r},${g},${b})`;
+  }
+  // For rgb(...) strings
+  const m2=color.match(/rgb\((\d+),(\d+),(\d+)\)/);
+  if(m2) return`rgb(${Math.round(+m2[1]*factor)},${Math.round(+m2[2]*factor)},${Math.round(+m2[3]*factor)})`;
+  return color;
+}
+
+function distPointToSegment(p,a,b){
+  // Use only x,y — z components from plane midpoints corrupt the distance
+  const px=p.x,py=p.y;
+  const ax=a.x,ay=a.y,bx=b.x,by=b.y;
+  const abx=bx-ax,aby=by-ay;
+  const len2=abx*abx+aby*aby;
+  if(len2<1e-15)return Math.sqrt((px-ax)**2+(py-ay)**2);
+  const t=Math.max(0,Math.min(1,((px-ax)*abx+(py-ay)*aby)/len2));
+  const cx=ax+abx*t,cy=ay+aby*t;
+  return Math.sqrt((px-cx)**2+(py-cy)**2);
+}
+
+// Project a world point to its orthographic 2D position (x + z*ORTHO_X, y + z*ORTHO_Y)
+function orthoProject(p){
+  return {x: p.x+(p.z||0)*ORTHO_X, y: p.y+(p.z||0)*ORTHO_Y};
+}
+
+// ===== RAY DATA PANEL =====
+function buildRayChain(ray){
+  // Walk parentRay chain from this ray back to the source
+  const chain=[];
+  let r=ray;
+  while(r){chain.unshift(r);r=r.parentRay}
+  return chain;
+}
+
+function calcTotalPathLength(ray){
+  // Walk the parentRay chain summing n*d + extralen for each segment.
+  // This matches the Java Ray.calcPathLength() exactly.
+  // segmentLength is the actual geometric distance set by the tracer.
+  // extralen is the phase correction added by optics like the lens (Fresnel approximation).
+  let len=0, r=ray;
+  while(r){
+    const d = (r.segmentLength !== undefined && r.segmentLength !== null)
+              ? r.segmentLength
+              : r.direct_vector.mag();  // fallback for un-traced rays
+    len += d * r.index + (r.extralen || 0);
+    r=r.parentRay;
+  }
+  return len;
+}
+
+function showRayData(seg){
+  selectedRay=seg;
+  switchTab('raydata');
+
+  const ray=seg.ray;
+  const chain=buildRayChain(ray);
+  const totalOPL=calcTotalPathLength(ray);
+
+  // Count total segments for this source ray
+  const sourceRay=chain[0];
+  const bundleSegs=lastTraceSegs.filter(s=>buildRayChain(s.ray)[0]===sourceRay);
+
+  let html='';
+
+  // ---- Current ray segment ----
+  html+=`<div class="data-section">`;
+  html+=`<h4>Ray Segment</h4>`;
+  html+=dataRow('Wavelength',`${ray.wavelength.toFixed(1)} nm`,ray.getColor());
+  html+=dataRow('Refractive index',ray.index.toFixed(4));
+  const dir=ray.direct_vector.unit();
+  const angDeg=(Math.atan2(dir.y,dir.x)*RAD2DEG).toFixed(2);
+  html+=dataRow('Direction',`${angDeg}°`);
+  html+=dataRow('Start',`${ray.startpoint.x.toFixed(3)}, ${ray.startpoint.y.toFixed(3)}, ${ray.startpoint.z.toFixed(3)}`);
+  const endPt=seg.p2;
+  html+=dataRow('End',`${endPt.x.toFixed(3)}, ${endPt.y.toFixed(3)}, ${endPt.z.toFixed(3)}`);
+  const segLen=seg.p1.sub(seg.p2).mag();
+  html+=dataRow('Segment length',`${segLen.toFixed(3)} mm`);
+  html+=dataRow('Optical path (seg)',`${(segLen*ray.index).toFixed(4)} mm`);
+  html+=`</div>`;
+
+  // ---- Cumulative path ----
+  html+=`<div class="data-section">`;
+  html+=`<h4>Cumulative Path</h4>`;
+  html+=dataRow('Bounces',`${chain.length-1}`);
+  html+=dataRow('Total OPL',`${totalOPL.toFixed(4)} mm`,'highlight');
+  html+=`</div>`;
+
+  // ---- Propagation chain ----
+  html+=`<div class="data-section">`;
+  html+=`<h4>Propagation Chain</h4>`;
+  for(let i=0;i<chain.length;i++){
+    const r=chain[i];
+    const opName=r.lastOptic?r.lastOptic.constructor.name+' #'+r.lastOptic.id:'Source';
+    const idx=r.index.toFixed(3);
+    const wv=r.wavelength.toFixed(1);
+    const cls=i===0?'entry':(i===chain.length-1?'exit':'');
+    html+=`<div class="chain-step ${cls}">`;
+    html+=`<span style="color:var(--text-dim)">${i===0?'→ Emitted':'→ '+opName}</span><br>`;
+    html+=`<span style="color:var(--text)">n=${idx}  λ=${wv}nm</span>`;
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+
+  // ---- Bundle OPD at this reference surface ----
+  // Group: all rays from the same source (parentOptic) that hit the same optic (lastOptic)
+  // as the clicked segment. Only use rays with the same chain depth as the clicked ray
+  // to exclude leaked intermediate rays that skipped curved surfaces.
+  const refOptic=seg.hitOptic;   // optic this clicked segment terminates on
+  const srcOptic=ray.parentOptic;
+  const clickedChainLen=chain.length;
+  // Include only segments that terminate on the same optic as the clicked one.
+  // Using seg.hitOptic (set by the tracer) rather than ray.lastOptic correctly
+  // identifies the destination surface rather than the source of the ray.
+  const refBundle=lastTraceSegs.filter(s=>
+    s.hitOptic===refOptic &&
+    s.ray.parentOptic===srcOptic &&
+    buildRayChain(s.ray).length===clickedChainLen
+  );
+  if(refBundle.length>1){
+    html+=`<div class="data-section">`;
+    const refName=refOptic?refOptic.constructor.name+' #'+refOptic.id:'(none)';
+    html+=`<h4>OPD at ${refName} (${refBundle.length} rays)</h4>`;
+    const opls=refBundle.map(s=>calcTotalPathLength(s.ray));
+    const mean=opls.reduce((a,b)=>a+b,0)/opls.length;
+    const rmsOPD=Math.sqrt(opls.reduce((a,b)=>a+(b-mean)**2,0)/opls.length);
+    const maxOPD=Math.max(...opls)-Math.min(...opls);
+    html+=dataRow('Mean OPL',`${mean.toFixed(4)} mm`);
+    html+=dataRow('OPD P-V',`${(maxOPD*1e6).toFixed(2)} nm`,'highlight');
+    html+=dataRow('OPD RMS',`${(rmsOPD*1e6).toFixed(2)} nm`);
+    if(ray.wavelength>0){
+      const sigma_waves=rmsOPD*1e6/ray.wavelength;
+      html+=dataRow('OPD RMS',`${sigma_waves.toFixed(4)} waves`);
+      // Maréchal approximation: valid only for σ < ~0.1 waves
+      if(sigma_waves<0.5){
+        const strehl=Math.exp(-Math.pow(2*Math.PI*sigma_waves,2));
+        const cls=strehl>0.8?'good':strehl>0.5?'highlight':'warn';
+        html+=dataRow('Est. Strehl (Maréchal)',strehl.toFixed(4),cls);
+      } else {
+        html+=dataRow('Est. Strehl','— (OPD > 0.5λ, not in focus?','warn');
+      }
+    }
+    html+=`</div>`;
+  } else if(refBundle.length===1){
+    html+=`<div class="data-section">`;
+    html+=`<h4>Bundle OPD</h4>`;
+    html+=`<p class="hint-text">Only one ray reaches this surface — place more rays in the beam for OPD.</p>`;
+    html+=`</div>`;
+  }
+
+  document.getElementById('rayDataContent').innerHTML=html;
+  document.getElementById('rayDataHint').style.display='none';
+
+  // If this ray came from a GaussianSource, compute and display beam parameters
+  if(ray.gaussianSource instanceof GaussianSource){
+    showGaussianBeamParms(ray, refBundle, refOptic);
+    if(ray.gaussianSource.gvd){
+      showGVDParms(ray, refOptic);
+    }
+  }
+  // If from AberrationSource, compute and display Seidel aberration coefficients
+  if(ray.gaussianSource instanceof AberrationSource){
+    showAberrationParms(ray, refOptic);
+  }
+
+  // Populate wavefront panel — pass refOptic so it knows which surface was hit
+  showWavefront(ray, refBundle, refOptic);
+}
+
+function dataRow(key,val,cls=''){
+  const swatchHtml=cls&&cls.startsWith('rgb')?`<span class="ray-swatch" style="background:${cls}"></span>`:'';
+  const valClass=(!cls||cls.startsWith('rgb'))?'':`class="data-val ${cls}"`;
+  return `<div class="data-row"><span class="data-key">${key}</span><span ${valClass||'class="data-val"'}>${swatchHtml}${val}</span></div>`;
+}
+
+function showGaussianBeamParms(ray, refBundle, refOptic){
+  const source=ray.gaussianSource;
+  const clickedChainLen=buildRayChain(ray).length;
+
+  // All 5 probe rays at this reference plane
+  const probeSegs=lastTraceSegs.filter(s=>
+    s.ray.gaussianSource===source &&
+    s.hitOptic===refOptic &&
+    s.ray.gaussianProbeIdx!==undefined &&
+    s.ray.gaussianProbeIdx<=4 &&
+    buildRayChain(s.ray).length===clickedChainLen
+  );
+
+  if(probeSegs.length<5){
+    const el=document.getElementById('rayDataContent');
+    el.innerHTML+=`<div class="data-section"><h4>Gaussian Beam</h4>`+
+      `<p class="hint-text">Only ${probeSegs.length}/5 probe rays reached this surface.</p></div>`;
+    return;
+  }
+
+  const gp=calcGaussianBeamParms(probeSegs, source);
+  if(!gp){
+    const el=document.getElementById('rayDataContent');
+    el.innerHTML+=`<div class="data-section"><h4>Gaussian Beam</h4>`+
+      `<p class="hint-text">Could not compute beam parameters.</p></div>`;
+    return;
+  }
+
+  const fmt=(v,digits=4)=>(!isFinite(v)||Math.abs(v)>1e15)?'∞':v.toFixed(digits);
+  const detOkH=Math.abs(gp.detH-1)<0.01;
+  const detOkV=Math.abs(gp.detV-1)<0.01;
+
+  let html=`<div class="data-section"><h4>Gaussian — Sagittal</h4>`;
+  html+=dataRow('ABCD',`[${fmt(gp.ah,4)}, ${fmt(gp.bh,4)}; ${fmt(gp.ch,4)}, ${fmt(gp.dh,4)}]`);
+  html+=dataRow('det(ABCD)',fmt(gp.detH,6),detOkH?'good':'warn');
+  html+=dataRow('Beam width w',`${fmt(gp.sag.w,4)} mm`,'highlight');
+  html+=dataRow('Radius of curv. R',`${fmt(gp.sag.R,3)} mm`);
+  html+=dataRow('Waist w₀',`${fmt(gp.sag.w0,4)} mm`,'good');
+  html+=dataRow('Dist to waist',`${fmt(gp.sag.z1,3)} mm`);
+  html+=`</div>`;
+
+  html+=`<div class="data-section"><h4>Gaussian — Tangential</h4>`;
+  html+=dataRow('ABCD',`[${fmt(gp.av,4)}, ${fmt(gp.bv,4)}; ${fmt(gp.cv,4)}, ${fmt(gp.dv,4)}]`);
+  html+=dataRow('det(ABCD)',fmt(gp.detV,6),detOkV?'good':'warn');
+  html+=dataRow('Beam width w',`${fmt(gp.tan.w,4)} mm`,'highlight');
+  html+=dataRow('Radius of curv. R',`${fmt(gp.tan.R,3)} mm`);
+  html+=dataRow('Waist w₀',`${fmt(gp.tan.w0,4)} mm`,'good');
+  html+=dataRow('Dist to waist',`${fmt(gp.tan.z1,3)} mm`);
+  html+=`</div>`;
+
+  document.getElementById('rayDataContent').innerHTML+=html;
+}
+
+function showGVDParms(ray, refOptic){
+  const source = ray.gaussianSource;
+  const clickedChainLen = buildRayChain(ray).length;
+
+  // Collect all 9 GVD probe rays (indices 0 and 5-8) at the same reference surface
+  const probeSegs = lastTraceSegs.filter(s =>
+    s.ray.gaussianSource === source &&
+    s.hitOptic === refOptic &&
+    s.ray.gaussianProbeIdx !== undefined &&
+    (s.ray.gaussianProbeIdx === 0 || (s.ray.gaussianProbeIdx >= 5 && s.ray.gaussianProbeIdx <= 8)) &&
+    buildRayChain(s.ray).length === clickedChainLen
+  );
+
+  const el = document.getElementById('rayDataContent');
+
+  if(probeSegs.length < 5){
+    el.innerHTML += `<div class="data-section"><h4>GVD Analysis</h4>`+
+      `<p class="hint-text">Only ${probeSegs.length}/5 GVD probe rays reached this surface.</p></div>`;
+    return;
+  }
+
+  const gp = calcGVDParms(probeSegs, source);
+  if(!gp){
+    el.innerHTML += `<div class="data-section"><h4>GVD Analysis</h4>`+
+      `<p class="hint-text">Could not compute GVD (check delta_wv > 0).</p></div>`;
+    return;
+  }
+
+  const fmt = (v, d=4) => (!isFinite(v) || Math.abs(v) > 1e15) ? '—' : v.toFixed(d);
+
+  let html = `<div class="data-section"><h4>GVD Analysis</h4>`;
+  html += dataRow('TOF (wv+½Δwv)', `${fmt(gp.gvd0, 2)} fs`);
+  html += dataRow('Group delay', `${fmt(gp.gdelay, 2)} fs`, 'highlight');
+  html += dataRow('GVD', `${fmt(gp.gvd, 2)} fs²`, Math.abs(gp.gvd) < 100 ? 'good' : 'warn');
+  html += dataRow('GVD delay', `${fmt(gp.gtot, 4)} fs`);
+  html += dataRow('TOD', `${fmt(gp.tod, 2)} fs³`);
+  html += dataRow('TOD delay', `${fmt(gp.todtot, 4)} fs`);
+  html += dataRow('Δλ', `${source.delta_wv} nm`);
+  html += `</div>`;
+
+  el.innerHTML += html;
+}
+
+function showAberrationParms(ray, refOptic){
+  const source=ray.gaussianSource;
+  const clickedChainLen=buildRayChain(ray).length;
+
+  // Collect all 14 probe rays at this reference plane
+  const probeSegs=lastTraceSegs.filter(s=>
+    s.ray.gaussianSource===source &&
+    s.hitOptic===refOptic &&
+    s.ray.gaussianProbeIdx!==undefined &&
+    s.ray.gaussianProbeIdx<=13 &&
+    buildRayChain(s.ray).length===clickedChainLen
+  );
+
+  const el=document.getElementById('rayDataContent');
+
+  if(probeSegs.length<14){
+    el.innerHTML+=`<div class="data-section"><h4>Aberration Analysis</h4>`+
+      `<p class="hint-text">Only ${probeSegs.length}/14 probe rays reached this surface.</p></div>`;
+    return;
+  }
+
+  const ab=calcAberrationParms(probeSegs, source);
+  if(!ab){
+    el.innerHTML+=`<div class="data-section"><h4>Aberration Analysis</h4>`+
+      `<p class="hint-text">Could not compute aberration parameters (degenerate geometry?).</p></div>`;
+    return;
+  }
+
+  const fmt=(v,d=4)=>(!isFinite(v)||Math.abs(v)>1e12)?'—':v.toFixed(d);
+  const fmtW=(v)=>{
+    if(!isFinite(v)||Math.abs(v)>1e8) return '—';
+    const abs=Math.abs(v);
+    const cls=abs<0.05?'good':abs<0.25?'highlight':'warn';
+    return{val:`${v.toFixed(4)} λ`,cls};
+  };
+  const wRow=(label,waves,mm)=>{
+    const w=fmtW(waves);
+    return dataRow(label,`${w.val}  (${fmt(mm,6)} mm/rad⁴)`,w.cls);
+  };
+
+  let html=`<div class="data-section"><h4>Aberration — System</h4>`;
+  html+=dataRow('Gaussian focus',`${fmt(ab.gF.x,2)}, ${fmt(ab.gF.y,2)}, ${fmt(ab.gF.z,2)}`,'highlight');
+  html+=dataRow('Chromatic focus',`${fmt(ab.cF.x,2)}, ${fmt(ab.cF.y,2)}, ${fmt(ab.cF.z,2)}`);
+  html+=dataRow('Defocus',`${fmt(ab.defocus,4)} mm`);
+  html+=dataRow('Magnification',fmt(ab.magnification,4));
+  html+=dataRow('Chromatic (mm/nm)',fmt(ab.chromatic,6));
+  html+=`</div>`;
+
+  html+=`<div class="data-section"><h4>Aberration — Seidel Coefficients</h4>`;
+  html+=wRow('Spherical',    ab.spherical_waves,   ab.spherical);
+  html+=wRow('Coma',         ab.coma_waves,         ab.coma);
+  html+=wRow('Astigmatism',  ab.astigmatism_waves,  ab.astigmatism);
+  html+=wRow('Field curv.',  ab.curvature_waves,    ab.curvature);
+  html+=wRow('Distortion',   ab.distortion_waves,   ab.distortion);
+  html+=wRow('Spherochrom.', ab.spherochrom_waves,  ab.spherochrom);
+  html+=`</div>`;
+
+  el.innerHTML+=html;
+}
+
+function showWavefront(ray, bundleSegs, refOptic){
+  const el=document.getElementById('wfContent');
+  const hint=document.getElementById('wfHint');
+
+  if(!bundleSegs||bundleSegs.length<2){
+    hint.style.display='';el.innerHTML='';return;
+  }
+  hint.style.display='none';
+
+  const wv=ray.wavelength;
+  const wvMM=wv*1e-6;
+  const opls=bundleSegs.map(s=>calcTotalPathLength(s.ray));
+  const mean=opls.reduce((a,b)=>a+b,0)/opls.length;
+  const opdWaves=opls.map(o=>(o-mean)/wvMM);
+  const rms=Math.sqrt(opdWaves.reduce((a,b)=>a+b*b,0)/opdWaves.length);
+  const pv=Math.max(...opdWaves)-Math.min(...opdWaves);
+
+  // Full 3D terminal hit points
+  const endPts=bundleSegs.map(s=>s.p2);
+  const N=endPts.length;
+
+  // Reference point: centroid of the actual hit points — centres the display
+  // on where the rays landed, independent of optic position.
+  const beamDir = ray.direct_vector.unit();
+  const zhat = new Vec3(0,0,1);
+  let ax_horiz, ax_vert;
+  const zPerp = zhat.sub(beamDir.mul(zhat.dot(beamDir)));
+  if(zPerp.mag() > 1e-9){
+    ax_vert  = zPerp.unit();
+    ax_horiz = beamDir.cross(ax_vert).unit();
+  } else {
+    ax_vert  = new Vec3(0,1,0);
+    ax_horiz = new Vec3(1,0,0);
+  }
+  // Centroid of hit points in 3D
+  const refPt = endPts.reduce((a,p)=>a.add(p), new Vec3()).mul(1/N);
+
+  // Project each 3D hit point onto the optic-plane axes, relative to optic centre
+  const hitPts=bundleSegs.map((s,i)=>{
+    const d=s.p2.sub(refPt);
+    return{ u:d.dot(ax_horiz), v:d.dot(ax_vert), opd:opdWaves[i] };
+  });
+
+  const uMax=Math.max(...hitPts.map(p=>Math.abs(p.u)))||1e-9;
+  const vMax=Math.max(...hitPts.map(p=>Math.abs(p.v)))||1e-9;
+  const scaleMax=Math.max(uMax,vMax);
+
+  // Spot spread (XY display plane) for spot-size stats
+  const scx=endPts.reduce((a,p)=>a+p.x,0)/N;
+  const scy=endPts.reduce((a,p)=>a+p.y,0)/N;
+  const spreads=endPts.map(p=>Math.sqrt((p.x-scx)**2+(p.y-scy)**2));
+  const spotRMS=Math.sqrt(spreads.reduce((a,b)=>a+b*b,0)/N);
+  const spotMaxR=Math.max(...spreads);
+  const angles=bundleSegs.map(s=>Math.atan2(s.ray.direct_vector.y,s.ray.direct_vector.x)*RAD2DEG);
+  const angSpread=Math.max(...angles)-Math.min(...angles);
+
+  // OPD colour: blue = min, red = max
+  const opdMin=Math.min(...hitPts.map(p=>p.opd));
+  const opdColor=opd=>{
+    const t=(pv>1e-15)?(opd-opdMin)/pv:0.5;
+    const r=Math.round(Math.min(1,2*t)*220);
+    const b=Math.round(Math.min(1,2*(1-t))*220);
+    return`rgb(${r},60,${b})`;
+  };
+
+  // SVG: square plot on the left, text labels on the right
+  const W=295, H=210, PAD=16;
+  const plotSz=H-PAD*2;   // square plot region
+  const toSvg=(u,v)=>[
+    PAD + plotSz*0.5 + (u/scaleMax)*plotSz*0.46,
+    PAD + plotSz*0.5 - (v/scaleMax)*plotSz*0.46
+  ];
+
+  let marks='';
+  for(const p of hitPts){
+    const[px,py]=toSvg(p.u,p.v);
+    const c=opdColor(p.opd);
+    marks+=`<line x1="${(px-4).toFixed(1)}" y1="${py.toFixed(1)}" x2="${(px+4).toFixed(1)}" y2="${py.toFixed(1)}" stroke="${c}" stroke-width="1.5"/>`;
+    marks+=`<line x1="${px.toFixed(1)}" y1="${(py-4).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(py+4).toFixed(1)}" stroke="${c}" stroke-width="1.5"/>`;
+  }
+
+  const opticLabel=refOptic ? `optic #${refOptic.id}` : 'free space';
+  const lx=PAD+plotSz+10;  // label column x
+
+  const svgMap=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:4px 0 0">
+    <rect x="${PAD}" y="${PAD}" width="${plotSz}" height="${plotSz}" fill="none" stroke="#2a3548" stroke-width="1"/>
+    <line x1="${PAD}" y1="${PAD+plotSz/2}" x2="${PAD+plotSz}" y2="${PAD+plotSz/2}" stroke="#1a2535" stroke-width="1"/>
+    <line x1="${PAD+plotSz/2}" y1="${PAD}" x2="${PAD+plotSz/2}" y2="${PAD+plotSz}" stroke="#1a2535" stroke-width="1"/>
+    ${marks}
+    <text x="${lx}" y="${PAD+16}" fill="#dde8f8" font-size="13" font-family="monospace">X (tang.)</text>
+    <text x="${lx}" y="${PAD+34}" fill="#5cb8ff" font-size="13" font-family="monospace">±${uMax.toFixed(3)} mm</text>
+    <text x="${lx}" y="${PAD+62}" fill="#dde8f8" font-size="13" font-family="monospace">Y (sag.)</text>
+    <text x="${lx}" y="${PAD+80}" fill="#5cb8ff" font-size="13" font-family="monospace">±${vMax.toFixed(3)} mm</text>
+    <text x="${lx}" y="${PAD+108}" fill="#dde8f8" font-size="13" font-family="monospace">OPD P-V</text>
+    <text x="${lx}" y="${PAD+126}" fill="#5cb8ff" font-size="13" font-family="monospace">${pv.toFixed(3)} λ</text>
+    <text x="${lx}" y="${PAD+144}" fill="#dde8f8" font-size="13" font-family="monospace">OPD:</text>
+    <text x="${lx}" y="${PAD+162}" fill="#3c6adc" font-size="13" font-family="monospace">short</text>
+    <text x="${lx+46}" y="${PAD+162}" fill="#dde8f8" font-size="13" font-family="monospace">→</text>
+    <text x="${lx+60}" y="${PAD+162}" fill="#dc3c3c" font-size="13" font-family="monospace">long</text>
+  </svg>`;
+
+  let html=`<div class="data-section"><h4>Projection on ${opticLabel}</h4>${svgMap}</div>`;
+
+  html+=`<div class="data-section"><h4>Wavefront Quality</h4>`;
+  html+=wfRow('OPD RMS',`${rms.toFixed(4)} waves`,rms);
+  html+=wfBar(rms,2);
+  html+=wfRow('OPD P-V',`${pv.toFixed(4)} waves`,pv/4);
+  html+=wfBar(pv/4,2);
+  if(rms<0.5){
+    const str=Math.exp(-Math.pow(2*Math.PI*rms,2));
+    html+=`<div class="wf-row"><span class="wf-key">Strehl ratio</span><span class="wf-val" style="color:${str>0.8?'var(--green)':str>0.5?'var(--yellow)':'var(--red)'}">${str.toFixed(4)}</span></div>`;
+    const dl=str>0.8?'✓ Diffraction-limited':str>0.5?'~ Near diffraction limit':'✗ Aberration-limited';
+    html+=`<div style="color:${str>0.8?'var(--green)':str>0.5?'var(--yellow)':'var(--red)'};font-size:12px;padding:4px 0">${dl}</div>`;
+  } else {
+    html+=`<div class="wf-row"><span class="wf-key">Strehl ratio</span><span class="wf-val" style="color:var(--accent2)">— OPD > 0.5λ</span></div>`;
+  }
+  html+=`</div>`;
+
+  html+=`<div class="data-section"><h4>Beam Geometry</h4>`;
+  html+=wfRow('Rays in bundle',`${bundleSegs.length}`);
+  html+=wfRow('Angular spread',`${angSpread.toFixed(3)}°`);
+  html+=wfRow('Spot size RMS',`${spotRMS.toFixed(4)} mm`);
+  html+=wfRow('Spot max radius',`${spotMaxR.toFixed(4)} mm`);
+  html+=`</div>`;
+
+  const wavs=[...new Set(bundleSegs.map(s=>s.ray.wavelength))];
+  if(wavs.length>1){
+    html+=`<div class="data-section"><h4>Chromatic</h4>`;
+    html+=wfRow('Wavelengths',`${wavs.length}`);
+    html+=wfRow('Range',`${Math.min(...wavs).toFixed(0)}–${Math.max(...wavs).toFixed(0)} nm`);
+    const byWav={};
+    bundleSegs.forEach((s,i)=>{const w=s.ray.wavelength;if(!byWav[w])byWav[w]=[];byWav[w].push(opls[i]);});
+    const wavMeans=Object.entries(byWav).map(([w,os])=>[+w,os.reduce((a,b)=>a+b,0)/os.length]);
+    wavMeans.sort((a,b)=>a[0]-b[0]);
+    const chromOPD=(Math.max(...wavMeans.map(x=>x[1]))-Math.min(...wavMeans.map(x=>x[1])))*1e6;
+    html+=wfRow('Chromatic OPD',`${chromOPD.toFixed(2)} nm`);
+    html+=`</div>`;
+  }
+
+  el.innerHTML=html;
+}
+
+
+function wfRow(key,val){
+  return`<div class="wf-row"><span class="wf-key">${key}</span><span class="wf-val">${val}</span></div>`;
+}
+function wfBar(fraction,maxVal){
+  const pct=Math.min(100,100*fraction/maxVal);
+  const col=fraction<0.07?'var(--green)':fraction<0.25?'var(--yellow)':'var(--red)';
+  return`<div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${col}"></div></div>`;
+}
+function rayWavelengthToCSS(wv){
+  if(wv>=300&&wv<=800){
+    let r=(wv>600?1:(wv>540?(wv-540)/61:(wv>300&&wv<=450?(450-wv)/150:0)));
+    let g=(wv<400?0:(wv<=550?(wv-400)/151:(wv<580?1:(wv<650?(650-wv)/71:0))));
+    let b=(wv>=300&&wv<480?1:(wv<550?(550-wv)/71:0));
+    return`rgb(${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)})`;
+  }
+  return'rgb(200,200,200)';
+}
+
+// ===== SCENE SERIALIZATION =====
+function serializeScene(){
+  const firstOptic=parseInt(document.getElementById('layoutFirstOptic').value)||0;
+  let s=optics.map(op=>op.serialize()).join('\n');
+  s+='\nfirstoptic '+firstOptic+'\n';
+  for(const le of layoutEntries){
+    s+=`placement opticno ${le.opticno} distance ${le.distance} angle ${le.angle} displacement ${le.displacement} back ${le.back} fromoptic ${le.fromoptic} reflectno ${le.reflectno}\n`;
+  }
+  return s;
+}
+
+function deserializeScene(text){
+  optics=[];selectedOptic=null;selectedRay=null;opticSerial=1;
+  layoutEntries=[];
+  document.getElementById('rayDataContent').innerHTML='';
+  document.getElementById('rayDataHint').style.display='';
+  document.getElementById('wfContent').innerHTML='';
+  document.getElementById('wfHint').style.display='';
+  const lines=text.split(/[\r\n]+/);
+  for(const line of lines){
+    const l=line.trim();
+    if(!l||l.startsWith('#'))continue;
+    const tok=l.split(/\s+/);
+    if(!tok.length)continue;
+    const type=tok[0].toLowerCase();
+    // Handle firstoptic
+    if(type==='firstoptic'){
+      const v=parseInt(tok[1])||0;
+      document.getElementById('layoutFirstOptic').value=v;
+      continue;
+    }
+    // Handle placement lines
+    if(type==='placement'){
+      const le={opticno:0,distance:100,angle:0,displacement:0,back:false,fromoptic:0,reflectno:1};
+      for(let i=1;i<tok.length-1;i+=2){
+        const k=tok[i],v=tok[i+1];
+        if(k==='opticno')le.opticno=+v;
+        else if(k==='distance')le.distance=+v;
+        else if(k==='angle')le.angle=+v;
+        else if(k==='displacement')le.displacement=+v;
+        else if(k==='back')le.back=(v==='true');
+        else if(k==='fromoptic')le.fromoptic=+v;
+        else if(k==='reflectno')le.reflectno=+v;
+      }
+      layoutEntries.push(le);
+      continue;
+    }
+    let op=null;
+    try{
+      const defaultPos=new Vec3(300,300);
+      if(type==='laser'){op=new Laser(defaultPos)}
+      else if(type==='lens'){op=new Lens(defaultPos)}
+      else if(type==='flat'){op=new Flat(defaultPos)}
+      else if(type==='prism'){op=new Prism(defaultPos)}
+      else if(type==='grating'){op=new Grating(defaultPos)}
+      else if(type==='curved'){
+        op=CurvedOptic.deserialize(l);
+        if(op)optics.push(op);
+        continue;
+      }
+      else if(type==='abcd'){op=new ABCDOptic(defaultPos)}
+      else if(type==='ruler'){op=new Ruler(defaultPos)}
+      else if(type==='protractor'){op=new Protractor(defaultPos)}
+      else if(type==='text'){op=new TextLabel(defaultPos,'')}
+      else if(type==='gaussian'){
+        op=GaussianSource.deserialize(l);
+        if(op)optics.push(op);
+        continue;
+      }
+      else if(type==='aberration'){
+        op=AberrationSource.deserialize(l);
+        if(op)optics.push(op);
+        continue;
+      }
+      else if(type==='quiver'){op=new QuiverSource(defaultPos)}
+      else if(type==='wavefront'){op=new Laser(defaultPos)}
+      else continue;
+      if(op)Optic.deserializeAttribs(l,op);
+    }catch(e){console.warn('parse error:',l,e)}
+    if(op)optics.push(op);
+  }
+  layoutRenderTable();
+}
+
+function copySceneToClipboard(){
+  const ta=document.getElementById('pasteArea');
+  if(!ta.value) ta.value=serializeScene();
+  ta.select();
+  try{
+    navigator.clipboard.writeText(ta.value).then(()=>{
+      const btn=document.getElementById('copyBtn');
+      btn.textContent='Copied!';
+      setTimeout(()=>{btn.textContent='Copy to clipboard';},2000);
+    });
+  }catch(e){
+    document.execCommand('copy');
+    const btn=document.getElementById('copyBtn');
+    btn.textContent='Copied!';
+    setTimeout(()=>{btn.textContent='Copy to clipboard';},2000);
+  }
+}
+
+function saveScene(){
+  const data=serializeScene();
+  // Try the download approach first
+  try{
+    const blob=new Blob([data],{type:'text/plain'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='optical_scene.dat';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},200);
+  }catch(e){}
+  // Also show the text in the load overlay so it can be copied
+  document.getElementById('pasteArea').value=data;
+  showLoadOverlay();
+  // Scroll the textarea into view and select all
+  setTimeout(()=>{
+    const ta=document.getElementById('pasteArea');
+    ta.focus();ta.select();
+  },100);
+}
+
+function newScene(){
+  if(!confirm('Clear current scene?'))return;
+  optics=[];selectedOptic=null;selectedRay=null;
+  layoutEntries=[];
+  document.getElementById('layoutFirstOptic').value='0';
+  layoutRenderTable();
+  document.getElementById('rayDataContent').innerHTML='';
+  document.getElementById('rayDataHint').style.display='';
+  document.getElementById('wfContent').innerHTML='';
+  document.getElementById('wfHint').style.display='';
+  redraw();updatePropsPanel();
+}
+
+function loadFile(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{deserializeScene(e.target.result);fitView();hideLoadOverlay();updatePropsPanel();redraw()};
+  reader.readAsText(file);
+}
+
+function loadFromPaste(){
+  const text=document.getElementById('pasteArea').value.trim();
+  if(!text)return;
+  deserializeScene(text);fitView();hideLoadOverlay();updatePropsPanel();redraw();
+}
+
+function showLoadOverlay(){document.getElementById('loadOverlay').style.display='flex'}
+function hideLoadOverlay(){
+  document.getElementById('loadOverlay').style.display='none';
+  // Return focus to canvas so mouse events register immediately
+  if(document.activeElement&&document.activeElement!==document.body){
+    document.activeElement.blur();
+  }
+  canvas.focus();
+}
+
+// ===== ZOOM CONTROLS =====
+function zoomIn(){const cx=canvas.width/2,cy=canvas.height/2;const wp=zg.screenToWorld(cx,cy);zg.mag*=1.3;zg.dx=wp.x-cx/zg.mag;zg.dy=wp.y-cy/zg.mag;redraw()}
+function zoomOut(){const cx=canvas.width/2,cy=canvas.height/2;const wp=zg.screenToWorld(cx,cy);zg.mag/=1.3;zg.dx=wp.x-cx/zg.mag;zg.dy=wp.y-cy/zg.mag;redraw()}
+function fitView(){
+  if(!optics.length){zg.dx=-100;zg.dy=-100;zg.mag=1;redraw();return}
+  let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
+  for(const op of optics){
+    const p=op.getPosition();
+    xmin=Math.min(xmin,p.x);xmax=Math.max(xmax,p.x);
+    ymin=Math.min(ymin,p.y);ymax=Math.max(ymax,p.y);
+  }
+  const pad=80;
+  const W=canvas.width,H=canvas.height;
+  const sceneW=Math.max(xmax-xmin+2*pad,1);
+  const sceneH=Math.max(ymax-ymin+2*pad,1);
+  zg.mag=Math.min(W/sceneW,H/sceneH,3);
+  zg.dx=xmin-pad;
+  zg.dy=ymin-pad;
+  redraw();
+}
+
+function toggleHideRays(){
+  hideRays=!hideRays;
+  document.getElementById('chkHideRays').checked=hideRays;
+  document.getElementById('hideRaysBtn').textContent=hideRays?'SHOW RAYS':'HIDE RAYS';
+  redraw();
+}
+
+// ===== BUILT-IN SCENES =====
+function loadBuiltin(name){
+  const scenes={
+    lens:`lens opticnumber 1 length 100.0 nfl1 100.0 centerwv 560.0 do1 0.0 reflect false astig false nfl2 100.0 do2 0.0 mid (300.0,250.0,0.0) rot 90.0 locked false
+laser opticnumber 2 wavelength 560.0 length 60.0 rays 3 poly false pointsrc true angle_span 0.12 back false bandwidth 50.0 laseron true mid (100.0,250.0,0.0) rot 90.0 locked false
+text opticnumber 3 text Thin_Lens_f=100mm mid (260.0,180.0,0.0) locked false
+firstoptic 0`,
+    snells:`prism opticnumber 1 material wavctr=560.0_cindx0=1.5_cindx1=0.0_cindx2=0.0_cindx3=0.0_birefr=n size 140.0 depth 140.0 reflect false mid (350.0,250.0,0.0) locked false
+laser opticnumber 2 wavelength 550.0 length 30.0 rays 1 poly true pointsrc false angle_span 0.4 back false bandwidth 200.0 laseron true mid (180.0,200.0,0.0) rot 106.4 locked false
+text opticnumber 3 text Snell's_Law_-_Prism_Dispersion mid (100.0,130.0,0.0) locked false
+firstoptic 0`,
+    birefr:`prism opticnumber 2 material wavctr=560.0_cindx0=1.5_cindx1=0.0_cindx2=0.0_cindx3=0.0_birefr=y_phi=0.0_theta=45.0_ecindx0=2.0_ecindx1=0.0_ecindx2=0.0_ecindx3=0.0 size 100.0 depth 60.0 reflect false mid (300.0,250.0,0.0) vertices (30.0,-30.0),(-30.0,-30.0),(-30.0,30.0),(30.0,30.0) locked false
+laser opticnumber 1 wavelength 560.0 length 30.0 rays 3 poly false pointsrc false angle_span 0.15 back false bandwidth 50.0 laseron true mid (150.0,250.0,0.0) rot 90.0 locked false
+text opticnumber 3 text Birefringent_Crystal mid (220.0,170.0,0.0) locked false
+text opticnumber 4 text Ordinary_+_extraordinary_rays mid (220.0,190.0,0.0) locked false
+firstoptic 0`,
+    telescope:`laser opticnumber 1 wavelength 560.0 length 50.0 rays 3 poly false pointsrc false angle_span 0.4 back false bandwidth 50.0 laseron true mid (50.0,250.0,0.0) rot 90.0 locked false
+lens opticnumber 2 length 80.0 nfl1 120.0 centerwv 560.0 do1 0.0 reflect false astig false nfl2 120.0 do2 0.0 mid (230.0,250.0,0.0) rot 90.0 locked false
+lens opticnumber 3 length 50.0 nfl1 40.0 centerwv 560.0 do1 0.0 reflect false astig false nfl2 40.0 do2 0.0 mid (430.0,250.0,0.0) rot 90.0 locked false
+text opticnumber 4 text Astronomical_Telescope mid (50.0,150.0,0.0) locked false
+text opticnumber 5 text Objective:_f=120mm mid (190.0,180.0,0.0) locked false
+text opticnumber 6 text Eyepiece:_f=40mm mid (390.0,180.0,0.0) locked false
+firstoptic 0`,
+    grating:`laser opticnumber 1 wavelength 560.0 length 20.0 rays 1 poly true pointsrc false angle_span 0.4 back false bandwidth 300.0 laseron true mid (100.0,250.0,0.0) rot 90.0 locked false
+grating opticnumber 2 length 80.0 sfreq 600.0 schirp 0.0 trans true mid (280.0,250.0,0.0) rot 90.0 orderleft 1 orderright 3 locked false
+text opticnumber 3 text Diffraction_Grating_600_lp/mm mid (100.0,160.0,0.0) locked false
+firstoptic 0`,
+    mirror:`laser opticnumber 1 wavelength 560.0 length 30.0 rays 5 poly false pointsrc false angle_span 0.5 back false bandwidth 50.0 laseron true mid (100.0,250.0,0.0) rot 90.0 locked false
+lens opticnumber 2 length 100.0 nfl1 80.0 centerwv 560.0 do1 0.0 reflect true astig false nfl2 80.0 do2 0.0 mid (380.0,250.0,0.0) rot 90.0 locked false
+text opticnumber 3 text Concave_Mirror_f=80mm mid (300.0,160.0,0.0) locked false
+firstoptic 0`,
+    tir:`prism opticnumber 1 material sellmeier=n wavctr=560.0 cindx0=1.5 cindx1=0.0 cindx2=0.0 cindx3=0.0 size 160.0 depth 160.0 reflect false mid (300.0,260.0,0.0) locked false
+laser opticnumber 2 wavelength 560.0 length 30.0 rays 1 poly false pointsrc false angle_span 0.4 back false bandwidth 50.0 laseron true mid (180.0,260.0,0.0) rot 90.0 locked false
+text opticnumber 3 text Total_Internal_Reflection mid (100.0,150.0,0.0) locked false
+text opticnumber 4 text Ray_enters_glass_at_shallow_angle mid (100.0,170.0,0.0) locked false
+firstoptic 0`,
+
+    tisapphire:`gaussian opticnumber 5 wavelength 800 length 10.00 delta_angle 0.001 delta_pos 0.01 radiusc_s 10759.8 beamwidth_s 0.80586 radiusc_t 878.799 beamwidth_t 0.709882 back true laseron true gvd true delta_wv 5 mid (-41.826,487.500,0.000) rot 76.24 locked false
+lens opticnumber 2 length 25.00 thickness 60.00 nfl1 50 centerwv 800 do1 0 reflect true astig false nfl2 100 do2 0 mid (48.555,435.002,0.000) rot 280.24 locked false
+lens opticnumber 3 length 25.00 thickness 60.00 nfl1 50 centerwv 800 do1 0 reflect true astig false nfl2 100 do2 0 mid (152.434,439.929,0.000) rot 84.24 locked false
+prism opticnumber 1 material wavctr=800_cindx0=1.7626_cindx1=-0.0001_cindx2=0_cindx3=0_birefr=n size 100 depth 60 reflect false mid (101.473,437.936,0.000) vertices -3.641,2.332_1.353,2.113_3.641,-2.332_-1.353,-2.113 locked false
+flat opticnumber 4 length 25.00 thickness 60.00 plate false reflect true refx false refy false mid (333.481,528.902,0.000) rot 278.24 locked false
+prism opticnumber 9 material wavctr=800_cindx0=1.5168_cindx1=-0.0002_cindx2=0_cindx3=0_birefr=n size 100 depth 60 reflect false mid (-65.931,554.181,0.000) vertices -9.145,14.500_17.640,0.992_-8.496,-15.492 locked false
+prism opticnumber 8 material wavctr=800_cindx0=1.5168_cindx1=-0.0002_cindx2=0_cindx3=0_birefr=n size 100 depth 60 reflect false mid (-117.880,569.417,0.000) vertices 3.424,17.333_13.095,-11.064_-16.519,-6.269 locked false
+flat opticnumber 7 length 25.00 thickness 60.00 plate false reflect true refx false refy false mid (-222.909,578.571,0.000) rot 88.94 locked false
+flat opticnumber 10 length 30.00 thickness 60.00 plate false reflect true refx false refy false mid (-721.736,653.999,0.000) rot 76.24 locked false
+text opticnumber 6 text Ti:sapphire_laser_cavity_(Dan_Marks) mid (-560.000,732.000,0.000) locked true
+text opticnumber 11 text Gaussian_optic_#5_is_the_source._Click_a_ray_to_see_beam_parameters. mid (-560.000,762.000,0.000) locked true
+text opticnumber 12 text Use_LAYOUT_tab_->_Apply_Layout_to_reposition_optics_from_the_Gaussian_source. mid (-560.000,792.000,0.000) locked true
+flat opticnumber 17 length 80.00 thickness 60.00 plate false reflect false refx false refy false mid (-165.677,672.046,0.000) rot 90.00 locked false
+firstoptic 5
+placement opticno 3 distance 200 angle 188 displacement 0 back false fromoptic 0 reflectno 1
+placement opticno 1 distance 51 angle 25 displacement 0 back false fromoptic 0 reflectno 1
+placement opticno 2 distance 51 angle 188 displacement 0 back false fromoptic 0 reflectno 1
+placement opticno 4 distance 300 angle -10 displacement 0 back false fromoptic 0 reflectno 1
+placement opticno 9 distance 400 angle 3 displacement 13 back false fromoptic 0 reflectno 1
+placement opticno 8 distance 50 angle 0 displacement -8 back false fromoptic 0 reflectno 1
+placement opticno 7 distance 100 angle 0 displacement 0 back false fromoptic 0 reflectno 1
+placement opticno 10 distance 700 angle 0 displacement 0 back true fromoptic 0 reflectno 1`,
+  };
+  const sceneText=scenes[name];
+  if(sceneText){deserializeScene(sceneText);fitView();hideLoadOverlay();updatePropsPanel();redraw()}
+}
+
+// ===== LAYOUT ENTRY PANEL =====
+
+function layoutRenderTable(){
+  const tbody=document.getElementById('layoutBody');
+  if(!tbody)return;
+  tbody.innerHTML='';
+  for(let i=0;i<layoutEntries.length;i++){
+    const le=layoutEntries[i];
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input class="lc" type="number" value="${le.opticno}" onchange="layoutEntries[${i}].opticno=+this.value" style="width:48px"></td>
+      <td><input class="lc" type="number" value="${le.distance}" onchange="layoutEntries[${i}].distance=+this.value" style="width:62px"></td>
+      <td><input class="lc" type="number" value="${le.angle}" onchange="layoutEntries[${i}].angle=+this.value" style="width:56px"></td>
+      <td><input class="lc" type="number" value="${le.displacement}" onchange="layoutEntries[${i}].displacement=+this.value" style="width:56px"></td>
+      <td style="text-align:center"><input type="checkbox" ${le.back?'checked':''} onchange="layoutEntries[${i}].back=this.checked" style="accent-color:var(--accent)"></td>
+      <td><input class="lc" type="number" value="${le.fromoptic}" onchange="layoutEntries[${i}].fromoptic=+this.value" style="width:48px"></td>
+      <td><input class="lc" type="number" value="${le.reflectno}" min="1" onchange="layoutEntries[${i}].reflectno=+this.value" style="width:40px"></td>
+      <td><button class="hdr-btn" onclick="layoutDeleteRow(${i})" style="padding:1px 5px;font-size:10px">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function layoutAddRow(){
+  layoutEntries.push({opticno:0,distance:100,angle:0,displacement:0,back:false,fromoptic:0,reflectno:1});
+  layoutRenderTable();
+}
+
+function layoutDeleteRow(i){
+  layoutEntries.splice(i,1);
+  layoutRenderTable();
+}
+
+function getOpticOfNumber(n){
+  return optics.find(op=>op.id===n)||null;
+}
+
+// ===== AUTO-PLACE HELPERS =====
+// Run a full trace from sourceOptic and return a map:
+//   optic.id → [ OTRay that just LEFT that optic, normalised to mag 1000 ]
+// The source's own originating rays are stored under sourceOptic.id.
+function doAutoPlace(){
+  // Direct port of Java TableFrame.doAutoPlace().
+  // Java maintains a Hashtable<opticno, Vector<Ray>> called castrays.
+  // For each layout entry:
+  //   1. Resolve which optic to measure from (fromoptic, else previous).
+  //   2. If that optic has no cached rays, call OriginateRays() to seed them.
+  //   3. Optionally reverse all ray directions (back=true).
+  //   4. Pick ray[reflectno-1] from the cache.
+  //   5. Place newo: newpos = ray.startpoint + dir.unit*distance + perp*displacement
+  //      newangle = ray.angleof()*RAD2DEG + le.angle - 90
+  //   6. Scatter-loop: repeatedly call newo.ScatterRays(r) taking element[0]
+  //      until no more scatter, store final scatterRays as new cache for newo.
+
+  const firstOpticNo=parseInt(document.getElementById('layoutFirstOptic').value)||0;
+  if(layoutEntries.length===0){alert('No layout entries.');return;}
+  const firstOpt=getOpticOfNumber(firstOpticNo);
+  if(!firstOpt){alert(`First optic #${firstOpticNo} not found.`);return;}
+
+  // castrays: Map<opticNo (int), OTRay[]>
+  const castrays=new Map();
+
+  let fromo=firstOpt;
+  let fromo_n=firstOpticNo;
+
+  for(const le of layoutEntries){
+    const newo=getOpticOfNumber(le.opticno);
+    if(!newo) continue;
+
+    // Resolve reference optic.
+    // fromoptic=0 normally means "use previous optic" (fromo).
+    // Exception: when back=true and fromoptic=0, use firstoptic — this is the
+    // intended "return beam" convention in the original Ti:sapphire layout where
+    // the last fold mirror is placed 700mm back along the original source beam.
+    let tfromo=le.fromoptic>0?getOpticOfNumber(le.fromoptic):null;
+    let tfromo_n=le.fromoptic>0?le.fromoptic:fromo_n;
+    if(!tfromo){
+      if(le.back){
+        tfromo=firstOpt; tfromo_n=firstOpticNo;
+      } else {
+        tfromo=fromo; tfromo_n=fromo_n;
+      }
+    }
+
+    // Seed cache from OriginateRays if not already present
+    if(!castrays.has(tfromo_n)){
+      const init=tfromo.originateRays();
+      if(!init||!init.length) continue;
+      castrays.set(tfromo_n, init);
+    }
+    let castrays_f=castrays.get(tfromo_n);
+
+    // back=true: reverse all direction vectors in the cache (Java mutates in-place;
+    // we make new rays to avoid corrupting the originals)
+    if(le.back){
+      castrays_f=castrays_f.map(r=>new OTRay(
+        {startpoint:r.startpoint,
+         direct_vector:r.direct_vector.mul(-1),
+         ray:true},
+        r.wavelength, r.index||1
+      ));
+    }
+
+    // Pick ray by reflectno (1-based)
+    const ridx=le.reflectno-1;
+    if(ridx<0||ridx>=castrays_f.length) continue;
+    const r=castrays_f[ridx];
+
+    // Compute new position and angle — exact Java port:
+    //   np  = r.beam().direct_vector.UnitVector()
+    //   perp = np.Cross((0,0,1))
+    //   newpos = r.beam().startpoint + np*distance + perp*displacement
+    //   newang = r.beam().direct_vector.angleof()*RAD2DEG + le.angle - 90
+    const np=r.direct_vector.unit();
+    const perp=np.cross(new Vec3(0,0,1));
+    const newpos=r.startpoint
+      .add(np.mul(le.distance))
+      .add(perp.mul(le.displacement));
+    // Java Point2D.angleof() = atan2(y,x) normalised to [0,2π)
+    let rayAngle=Math.atan2(r.direct_vector.y, r.direct_vector.x)*RAD2DEG;
+    if(rayAngle<0) rayAngle+=360;
+    const newAngle=rayAngle+le.angle-90;
+
+    newo.move(new Vec3(newpos.x,newpos.y,0));
+    newo.rotate(newAngle);
+
+    // Update fromo for next iteration
+    fromo=newo;
+    fromo_n=le.opticno;
+
+    // Scatter-loop: Java does
+    //   for(;;) { rc2 = fromo.ScatterRays(r); if null or empty break;
+    //             rc1=rc2; r=rc1.scatterRays[0]; }
+    //   if(rc1!=null) castrays.put(fromo_n, rc1.scatterRays)
+    // This traces r through all surfaces of newo (e.g. both faces of a prism),
+    // following element[0] at each step.  The final scatterRays list becomes
+    // the ray cache for fromo_n.
+    let rc1=null;
+    let rCur=r;
+    rCur.lastOptic=null; rCur.lastSurface=-1;
+    for(let bounce=0;bounce<50;bounce++){
+      const rc2=newo.scatterRay(rCur);
+      if(!rc2||!rc2.newRays||!rc2.newRays.length) break;
+      rc1=rc2;
+      rCur=rc1.newRays[0];
+      rCur.lastOptic=newo;
+      rCur.lastSurface=rc1.surfaceIdx!==undefined?rc1.surfaceIdx:-1;
+    }
+    if(rc1){
+      castrays.set(fromo_n, rc1.newRays);
+    }
+  }
+
+  redraw();
+}
+
+// ===== INIT =====
+loadBuiltin('lens');
+setMode('move');
+layoutRenderTable();
+</script>
+</body>
+</html>
+
