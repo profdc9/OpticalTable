@@ -4197,16 +4197,14 @@ function showWavefront(ray, bundleSegs, refOptic){
     <line x1="${PAD}" y1="${PAD+plotSz/2}" x2="${PAD+plotSz}" y2="${PAD+plotSz/2}" stroke="#1a2535" stroke-width="1"/>
     <line x1="${PAD+plotSz/2}" y1="${PAD}" x2="${PAD+plotSz/2}" y2="${PAD+plotSz}" stroke="#1a2535" stroke-width="1"/>
     ${marks}
-    <text x="${lx}" y="${PAD+16}" fill="#dde8f8" font-size="13" font-family="monospace">X (tang.)</text>
-    <text x="${lx}" y="${PAD+34}" fill="#5cb8ff" font-size="13" font-family="monospace">±${scaleMax.toFixed(3)} mm</text>
-    <text x="${lx}" y="${PAD+62}" fill="#dde8f8" font-size="13" font-family="monospace">Y (sag.)</text>
-    <text x="${lx}" y="${PAD+80}" fill="#5cb8ff" font-size="13" font-family="monospace">±${scaleMax.toFixed(3)} mm</text>
-    <text x="${lx}" y="${PAD+108}" fill="#dde8f8" font-size="13" font-family="monospace">OPD P-V</text>
-    <text x="${lx}" y="${PAD+126}" fill="#5cb8ff" font-size="13" font-family="monospace">${pv.toFixed(3)} λ</text>
-    <text x="${lx}" y="${PAD+144}" fill="#dde8f8" font-size="13" font-family="monospace">OPD:</text>
-    <text x="${lx}" y="${PAD+162}" fill="#3c6adc" font-size="13" font-family="monospace">short</text>
-    <text x="${lx+46}" y="${PAD+162}" fill="#dde8f8" font-size="13" font-family="monospace">→</text>
-    <text x="${lx+60}" y="${PAD+162}" fill="#dc3c3c" font-size="13" font-family="monospace">long</text>
+    <text x="${lx}" y="${PAD+16}" fill="#dde8f8" font-size="13" font-family="monospace">Scale</text>
+    <text x="${lx}" y="${PAD+34}" fill="#5cb8ff" font-size="13" font-family="monospace">${(2*scaleMax).toFixed(3)} mm</text>
+    <text x="${lx}" y="${PAD+62}" fill="#dde8f8" font-size="13" font-family="monospace">OPD P-V</text>
+    <text x="${lx}" y="${PAD+80}" fill="#5cb8ff" font-size="13" font-family="monospace">${pv.toFixed(3)} λ</text>
+    <text x="${lx}" y="${PAD+108}" fill="#dde8f8" font-size="13" font-family="monospace">OPD:</text>
+    <text x="${lx}" y="${PAD+126}" fill="#3c6adc" font-size="13" font-family="monospace">short</text>
+    <text x="${lx+46}" y="${PAD+126}" fill="#dde8f8" font-size="13" font-family="monospace">→</text>
+    <text x="${lx+60}" y="${PAD+126}" fill="#dc3c3c" font-size="13" font-family="monospace">long</text>
   </svg>`;
 
   let html=`<div class="data-section"><h4>Projection on ${opticLabel}</h4>${svgMap}</div>`;
