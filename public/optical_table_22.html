@@ -367,6 +367,7 @@
     <button class="hdr-btn" onclick="zoomIn()">ZOOM+</button>
     <button class="hdr-btn" onclick="zoomOut()">ZOOM−</button>
     <button class="hdr-btn" onclick="fitView()">FIT</button>
+    <button class="hdr-btn" onclick="showAbout()">ABOUT</button>
   </div>
 </div>
 
@@ -527,6 +528,26 @@
       </div>
     </div>
     <button class="close-btn" onclick="hideLoadOverlay()">CLOSE</button>
+  </div>
+</div>
+
+<div id="aboutOverlay" style="display:none">
+  <div id="loadBox">
+    <h2>OPTICAL TABLE</h2>
+    <div style="color:var(--text-dim);font-size:12px;margin-bottom:16px">Ray Optics Simulator</div>
+    <div style="color:var(--text);font-size:13px;margin-bottom:16px">
+      Copyright &copy; 1997&ndash;2004, 2026 Daniel L. Marks
+    </div>
+    <div style="color:var(--text-dim);font-size:12px;line-height:1.7;white-space:pre-wrap">This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source distribution.</div>
+    <button class="close-btn" onclick="hideAbout()" style="margin-top:20px">CLOSE</button>
   </div>
 </div>
 
@@ -4420,6 +4441,8 @@ function loadFromPaste(){
 }
 
 function showLoadOverlay(){document.getElementById('loadOverlay').style.display='flex'}
+function showAbout(){document.getElementById('aboutOverlay').style.display='flex'}
+function hideAbout(){document.getElementById('aboutOverlay').style.display='none'}
 function hideLoadOverlay(){
   document.getElementById('loadOverlay').style.display='none';
   // Return focus to canvas so mouse events register immediately
