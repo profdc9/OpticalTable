@@ -963,7 +963,7 @@ class Laser extends Optic {
       nr.parentRay=ray;
       return{returnRay:ret,t1:ipt.t1,newRays:[nr]};
     }
-    return null;
+    return{returnRay:ret,t1:ipt.t1,newRays:[]};
   }
   render(ctx,zg){
     ctx.strokeStyle='#aaaaaa';
@@ -1265,6 +1265,22 @@ class AberrationSource extends GaussianSource {
     return rays;
   }
 
+  scatterRay(ray){
+    if(!this.back) return null;
+    const ipt=this.pl.intersectionWith(ray.seg);
+    if(!ipt||ipt.t1<SENSITIVITY) return null;
+    const ret=new OTRay({startpoint:ray.startpoint,
+      direct_vector:ray.direct_vector.unit().mul(ipt.t1*ray.direct_vector.mag()),ray:false},
+      ray.wavelength,ray.index);
+    const p=this.pl.cross.unit();
+    if(ray.direct_vector.dot(p)<0){
+      const nr=new OTRay({startpoint:ipt.pt,direct_vector:ray.direct_vector,ray:true},
+        ray.wavelength,ray.index);
+      nr.parentRay=ray;
+      return{returnRay:ret,t1:ipt.t1,newRays:[nr]};
+    }
+    return{returnRay:ret,t1:ipt.t1,newRays:[]};
+  }
   render(ctx,zg){
     // Draw like GaussianSource but in orange to distinguish
     ctx.strokeStyle='#ff8800'; ctx.lineWidth=2;
@@ -4182,9 +4198,9 @@ function showWavefront(ray, bundleSegs, refOptic){
     <line x1="${PAD+plotSz/2}" y1="${PAD}" x2="${PAD+plotSz/2}" y2="${PAD+plotSz}" stroke="#1a2535" stroke-width="1"/>
     ${marks}
     <text x="${lx}" y="${PAD+16}" fill="#dde8f8" font-size="13" font-family="monospace">X (tang.)</text>
-    <text x="${lx}" y="${PAD+34}" fill="#5cb8ff" font-size="13" font-family="monospace">±${uMax.toFixed(3)} mm</text>
+    <text x="${lx}" y="${PAD+34}" fill="#5cb8ff" font-size="13" font-family="monospace">±${scaleMax.toFixed(3)} mm</text>
     <text x="${lx}" y="${PAD+62}" fill="#dde8f8" font-size="13" font-family="monospace">Y (sag.)</text>
-    <text x="${lx}" y="${PAD+80}" fill="#5cb8ff" font-size="13" font-family="monospace">±${vMax.toFixed(3)} mm</text>
+    <text x="${lx}" y="${PAD+80}" fill="#5cb8ff" font-size="13" font-family="monospace">±${scaleMax.toFixed(3)} mm</text>
     <text x="${lx}" y="${PAD+108}" fill="#dde8f8" font-size="13" font-family="monospace">OPD P-V</text>
     <text x="${lx}" y="${PAD+126}" fill="#5cb8ff" font-size="13" font-family="monospace">${pv.toFixed(3)} λ</text>
     <text x="${lx}" y="${PAD+144}" fill="#dde8f8" font-size="13" font-family="monospace">OPD:</text>
