@@ -1,0 +1,7 @@
+laser opticnumber 1 wavelength 560.0 length 50.0 rays 3 poly false pointsrc false angle_span 0.4 back false bandwidth 50.0 laseron true mid (50.0,250.0,0.0) rot 90.0 locked false
+lens opticnumber 2 length 80.0 nfl1 120.0 centerwv 560.0 do1 0.0 reflect false astig false nfl2 120.0 do2 0.0 mid (230.0,250.0,0.0) rot 90.0 locked false
+lens opticnumber 3 length 50.0 nfl1 40.0 centerwv 560.0 do1 0.0 reflect false astig false nfl2 40.0 do2 0.0 mid (430.0,250.0,0.0) rot 90.0 locked false
+text opticnumber 4 text Astronomical_Telescope mid (50.0,150.0,0.0) locked false
+text opticnumber 5 text Objective:_f=120mm mid (190.0,180.0,0.0) locked false
+text opticnumber 6 text Eyepiece:_f=40mm mid (390.0,180.0,0.0) locked false
+firstoptic 0

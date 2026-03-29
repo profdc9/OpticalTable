@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Optical Table — Scene Gallery</title>
+<style>
+  body { background: #0a0c10; color: #dde8f8; font-family: 'Courier New', monospace; padding: 40px; }
+  h1 { color: #5cb8ff; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
+  p { color: #7a94b8; margin-bottom: 32px; font-size: 13px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+  .card {
+    background: #12161e; border: 1px solid #2a3548;
+    padding: 20px 24px; width: 260px; text-decoration: none; color: inherit;
+    transition: border-color 0.15s;
+  }
+  .card:hover { border-color: #5cb8ff; }
+  .card h2 { font-size: 14px; color: #5cb8ff; margin-bottom: 6px; letter-spacing: 1px; }
+  .card p { color: #7a94b8; font-size: 12px; margin: 0; }
+</style>
+</head>
+<body>
+<h1>Optical Table — Scene Gallery</h1>
+<p>Click a scene to open it in the simulator.</p>
+<div class="grid">
+  <a class="card" href="optical_table_22?scene=scenes/telescope.dat">
+    <h2>Astronomical Telescope</h2>
+    <p>Two-lens telescope with objective (f=120mm) and eyepiece (f=40mm).</p>
+  </a>
+</div>
+</body>
+</html>
