@@ -516,7 +516,7 @@
     <div style="margin-bottom:12px">
       <div class="overlay-label">LOAD .DAT FILE</div>
       <input type="file" id="fileInput" accept=".dat,.txt" style="display:none" onchange="loadFile(this)">
-      <button class="lesson-btn" onclick="document.getElementById('fileInput').click()">📂 Open file…</button>
+      <button class="lesson-btn" onclick="openFileDialog()">📂 Open file…</button>
     </div>
     <div style="margin-bottom:12px">
       <div class="overlay-label">PASTE SCENE DATA / SAVE OUTPUT</div>
@@ -554,6 +554,39 @@ class Vec3 {
     if(parts.length<2)throw new Error('bad vec');
     return new Vec3(+parts[0],+parts[1],parts[2]?+parts[2]:0);
   }
+}
+
+// ===== TAURI INTEGRATION =====
+// window.__TAURI__ is injected by Tauri (withGlobalTauri: true). Absent in a browser.
+const isNativeApp = typeof window.__TAURI__ !== 'undefined';
+
+async function tauriSaveScene(){
+  const data = serializeScene();
+  try {
+    await window.__TAURI__.core.invoke('save_scene_file', { contents: data });
+  } catch(e) {
+    console.error('Tauri save failed:', e);
+  }
+}
+
+async function tauriOpenFile(){
+  try {
+    const text = await window.__TAURI__.core.invoke('open_scene_file');
+    if(text){
+      deserializeScene(text);
+      fitView();
+      hideLoadOverlay();
+      updatePropsPanel();
+      redraw();
+    }
+  } catch(e) {
+    console.error('Tauri open failed:', e);
+  }
+}
+
+function openFileDialog(){
+  if(isNativeApp) tauriOpenFile();
+  else document.getElementById('fileInput').click();
 }
 
 // Default sagittal thickness (mm) assigned to a newly created optic.
@@ -4323,6 +4356,7 @@ function copySceneToClipboard(){
 }
 
 function saveScene(){
+  if(isNativeApp){ tauriSaveScene(); return; }
   const data=serializeScene();
   // Try the download approach first
   try{
@@ -4630,9 +4664,24 @@ function doAutoPlace(){
 }
 
 // ===== INIT =====
-loadBuiltin('lens');
-setMode('move');
-layoutRenderTable();
+// Load scene from ?scene=<url> query parameter if present (browser and Tauri)
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const sceneUrl=params.get('scene');
+  if(sceneUrl){
+    fetch(sceneUrl)
+      .then(r=>{if(!r.ok)throw new Error(r.status);return r.text()})
+      .then(text=>{deserializeScene(text);fitView();updatePropsPanel();redraw()})
+      .catch(e=>{
+        console.warn('Could not load scene from URL:',sceneUrl,e);
+        loadBuiltin('lens');setMode('move');layoutRenderTable();
+      });
+    return; // skip default scene load
+  }
+  loadBuiltin('lens');
+  setMode('move');
+  layoutRenderTable();
+})();
 </script>
 </body>
 </html>
